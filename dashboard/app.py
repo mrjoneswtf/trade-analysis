@@ -10,7 +10,6 @@ Run with: streamlit run dashboard/app.py
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from urllib.parse import quote
 from streamlit_echarts import st_echarts
 import streamlit_antd_components as sac
 import streamlit_shadcn_ui as ui
@@ -78,23 +77,10 @@ section[data-testid="stSidebar"] {{
     display: none;
 }}
 
-/* Sticky era navigation wrapper */
-.era-nav-wrapper {{
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: {THEME["surface_8dp"]};
-    padding: 0.75rem 1rem;
-    z-index: 1000;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.4);
-    display: none;  /* Hidden on desktop */
-}}
-
 /* Tighter spacing on mobile */
 @media (max-width: 768px) {{
     .block-container {{
-        padding: 1rem 0.75rem 100px 0.75rem !important;
+        padding: 1rem 0.75rem 80px 0.75rem !important;
     }}
     h2 {{
         font-size: 1.1rem !important;
@@ -102,14 +88,19 @@ section[data-testid="stSidebar"] {{
     h3 {{
         font-size: 1rem !important;
     }}
-    /* Show sticky nav on mobile */
-    .era-nav-wrapper {{
-        display: block;
-    }}
-    /* Hide desktop era selector (antd segmented control) on mobile */
-    .desktop-era-selector,
+    /* Make segmented control sticky at bottom on mobile */
     iframe[title="streamlit_antd_components.utils.component_func.sac"] {{
-        display: none !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100vw !important;
+        height: 60px !important;
+        z-index: 1000 !important;
+        background: {THEME["surface_8dp"]} !important;
+        padding: 10px 8px !important;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.5) !important;
+        border-top: 1px solid {THEME["surface_16dp"]} !important;
     }}
 }}
 
@@ -138,56 +129,6 @@ hr {{
 /* Caption text */
 .stCaption {{
     color: {THEME["text_medium"]} !important;
-}}
-
-/* Mobile sticky era navigation */
-.mobile-era-nav {{
-    display: none;
-}}
-@media (max-width: 768px) {{
-    .mobile-era-nav {{
-        display: flex;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: {THEME["surface_8dp"]};
-        padding: 0.5rem;
-        gap: 0.25rem;
-        z-index: 1000;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
-    }}
-    .mobile-era-btn {{
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 0.5rem 0.25rem;
-        border-radius: 6px;
-        text-decoration: none;
-        background: {THEME["surface_4dp"]};
-        color: {THEME["text_medium"]};
-        transition: all 0.2s ease;
-    }}
-    .mobile-era-btn:hover {{
-        background: {THEME["surface_16dp"]};
-        color: {THEME["text_high"]};
-    }}
-    .mobile-era-btn.selected {{
-        color: #000 !important;
-    }}
-    .mobile-era-btn .era-name {{
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-align: center;
-        line-height: 1.2;
-    }}
-    .mobile-era-btn .era-years {{
-        font-size: 0.6rem;
-        opacity: 0.8;
-        margin-top: 2px;
-    }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -598,21 +539,19 @@ def main():
     else:
         default_index = 3  # Default to Trade War Era
     
-    # Desktop era selector (hidden on mobile via CSS)
-    st.markdown('<div class="desktop-era-selector">', unsafe_allow_html=True)
+    # Era selector (sticky on mobile via CSS)
     selected_label = sac.segmented(
         items=era_items,
         index=default_index,
         align="center",
-        size="sm",
+        size="xs",  # Extra small to fit on mobile
         radius="md",
         color="violet",  # Material purple
         bg_color="transparent",
         divider=False,
         use_container_width=True,
-        key="desktop_era"
+        key="era_selector"
     )
-    st.markdown('</div>', unsafe_allow_html=True)
     
     # Map label back to full era key and update URL
     selected_era = label_to_key.get(selected_label, era_keys[default_index])
@@ -741,30 +680,6 @@ def main():
         "Values adjusted for inflation (2020 base year) | "
         "Analysis covers US imports by country of origin"
     )
-    
-    # Mobile sticky era navigation (fixed to bottom)
-    # Build navigation links for mobile
-    mobile_nav_items = []
-    for era_key in era_keys:
-        name_parts = era_key.split("(")
-        era_name = name_parts[0].strip()
-        years = name_parts[1].replace(")", "") if len(name_parts) > 1 else ""
-        is_selected = era_key == selected_era
-        selected_class = "selected" if is_selected else ""
-        era_color = ERAS[era_key]["color"]
-        encoded_era = quote(era_key)  # URL-encode the era key
-        inline_style = f"background:{era_color}; color: #000;" if is_selected else ""
-        
-        mobile_nav_items.append(
-            f'<a href="?era={encoded_era}" target="_self" class="mobile-era-btn {selected_class}" style="{inline_style}">'
-            f'<span class="era-name">{era_name}</span>'
-            f'<span class="era-years">{years}</span>'
-            f'</a>'
-        )
-    
-    # Render mobile nav HTML (CSS is in the main style block above)
-    mobile_nav_html = '<div class="mobile-era-nav">' + ''.join(mobile_nav_items) + '</div>'
-    st.markdown(mobile_nav_html, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
