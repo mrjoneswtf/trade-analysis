@@ -28,9 +28,10 @@ st.markdown("""
     font-size: 1.5rem !important;
     margin: 0 0 0.25rem 0 !important;
     font-weight: 700;
+    color: rgba(255,255,255,0.87);
 }
 .compact-header p {
-    color: #6b7280;
+    color: rgba(255,255,255,0.60);
     font-size: 0.875rem;
     margin: 0;
 }
@@ -53,15 +54,15 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
     }
 }
 .metric-card {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    background: #1e1e1e;
     border-radius: 0.75rem;
     padding: 0.75rem;
     text-align: center;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.12);
 }
 .metric-card .label {
     font-size: 0.7rem;
-    color: #64748b;
+    color: rgba(255,255,255,0.60);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 0.25rem;
@@ -69,14 +70,14 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
 .metric-card .value {
     font-size: 1.25rem;
     font-weight: 700;
-    color: #1e293b;
+    color: rgba(255,255,255,0.87);
 }
 .metric-card .delta {
     font-size: 0.75rem;
     margin-top: 0.125rem;
 }
-.metric-card .delta.positive { color: #10b981; }
-.metric-card .delta.negative { color: #dc2626; }
+.metric-card .delta.positive { color: #4ade80; }
+.metric-card .delta.negative { color: #CF6679; }
 
 /* Growth cards grid */
 .growth-grid {
@@ -127,8 +128,9 @@ iframe {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     width: 100%;
-    background: white;
+    background: #1e1e1e;
     margin: 0.5rem 0;
+    border-top: 1px solid rgba(255,255,255,0.12);
 }
 
 @media (max-width: 768px) {
@@ -138,7 +140,7 @@ iframe {
         left: 0;
         right: 0;
         z-index: 999;
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.4);
         margin: 0;
     }
 }
@@ -171,12 +173,13 @@ iframe {
 }
 
 .era-btn:not(.selected) {
-    background: #f1f5f9;
-    color: #475569;
+    background: #1e1e1e;
+    color: rgba(255,255,255,0.60);
 }
 
 .era-btn:not(.selected):hover {
-    background: #e2e8f0;
+    background: #282828;
+    color: rgba(255,255,255,0.87);
 }
 
 /* Hide default Streamlit radio on mobile */
