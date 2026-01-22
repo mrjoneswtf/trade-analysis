@@ -13,6 +13,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
+from streamlit_echarts import st_echarts
 
 # Page config
 st.set_page_config(
@@ -79,20 +80,6 @@ COUNTRY_COLORS = {
     "India": "#ca8a04",      # Yellow
     "Ireland": "#65a30d",    # Lime
 }
-
-
-def render_legend(countries: list[str], colors: dict[str, str]):
-    """Render two-column legend using Streamlit columns."""
-    col1, col2 = st.columns(2)
-    mid = (len(countries) + 1) // 2
-    
-    for i, country in enumerate(countries):
-        target = col1 if i < mid else col2
-        color = colors.get(country, "#888")
-        target.markdown(
-            f'<span style="color:{color}; font-size: 14px;">●</span> {country}',
-            unsafe_allow_html=True
-        )
 
 
 @st.cache_data
@@ -220,6 +207,145 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
     fig.update_yaxes(range=[0, 25])
     
     return fig
+
+
+def create_china_arc_echart(df: pd.DataFrame, selected_era: str) -> dict:
+    """Create ECharts config for the main China trajectory chart."""
+    imports = df[df["trade_type"] == "import"]
+    
+    # Get unique years for x-axis
+    years = sorted(imports["year"].unique().tolist())
+    
+    # Build mark areas for era shading
+    mark_area_data = []
+    for era_name, era_config in ERAS.items():
+        opacity = 0.3 if era_name == selected_era else 0.1
+        mark_area_data.append([
+            {
+                "name": era_config["title"] if era_name == selected_era else "",
+                "xAxis": str(era_config["start"]),
+                "itemStyle": {"color": era_config["color"], "opacity": opacity}
+            },
+            {"xAxis": str(era_config["end"])}
+        ])
+    
+    # Build mark points for key events on China's line
+    events = [
+        (2001, "WTO Entry"),
+        (2008, "Financial Crisis"),
+        (2018, "Trade War"),
+        (2020, "COVID-19"),
+        (2023, "Mexico #1")
+    ]
+    mark_points = []
+    china_data = imports[imports["country"] == "China"].sort_values("year")
+    for year, label in events:
+        share_row = china_data[china_data["year"] == year]
+        if len(share_row) > 0:
+            share = share_row["share_pct"].values[0]
+            mark_points.append({
+                "name": label,
+                "coord": [str(year), round(share, 1)],
+                "value": label,
+                "symbol": "pin",
+                "symbolSize": 40,
+                "label": {
+                    "show": True,
+                    "position": "top",
+                    "formatter": label,
+                    "fontSize": 10
+                }
+            })
+    
+    # Build series for each country
+    series = []
+    
+    # Add other countries first (behind China)
+    for country in FOCUS_COUNTRIES:
+        if country != "China":
+            country_data = imports[imports["country"] == country].sort_values("year")
+            if len(country_data) > 0:
+                # Create data aligned to years
+                data_dict = dict(zip(country_data["year"].astype(str), country_data["share_pct"].round(1)))
+                data = [data_dict.get(str(y), None) for y in years]
+                
+                color = COUNTRY_COLORS.get(country, "#6b7280")
+                series.append({
+                    "name": country,
+                    "type": "line",
+                    "data": data,
+                    "smooth": True,
+                    "symbol": "none",
+                    "lineStyle": {"width": 1.5, "color": color, "opacity": 0.6},
+                    "itemStyle": {"color": color},
+                    "emphasis": {"focus": "series", "lineStyle": {"width": 3, "opacity": 1}},
+                    "z": 1,
+                })
+    
+    # Add China line last (on top, prominent)
+    china_data_dict = dict(zip(china_data["year"].astype(str), china_data["share_pct"].round(1)))
+    china_values = [china_data_dict.get(str(y), None) for y in years]
+    
+    series.append({
+        "name": "China",
+        "type": "line",
+        "data": china_values,
+        "smooth": True,
+        "symbol": "circle",
+        "symbolSize": 6,
+        "lineStyle": {"width": 3, "color": COUNTRY_COLORS["China"]},
+        "itemStyle": {"color": COUNTRY_COLORS["China"]},
+        "emphasis": {"focus": "series", "lineStyle": {"width": 4}},
+        "z": 10,
+        "markArea": {"silent": True, "data": mark_area_data},
+        "markPoint": {"data": mark_points, "symbolSize": 35}
+    })
+    
+    return {
+        "title": {
+            "text": "China's Import Share: The Rise and Shift",
+            "left": "center",
+            "textStyle": {"fontSize": 16, "fontWeight": "bold"}
+        },
+        "tooltip": {
+            "trigger": "axis",
+            "axisPointer": {"type": "cross"},
+            "formatter": None  # Use default formatter
+        },
+        "legend": {
+            "data": FOCUS_COUNTRIES,
+            "bottom": 0,
+            "type": "scroll",
+            "textStyle": {"fontSize": 11}
+        },
+        "grid": {
+            "left": "3%",
+            "right": "4%",
+            "bottom": "15%",
+            "top": "15%",
+            "containLabel": True
+        },
+        "xAxis": {
+            "type": "category",
+            "data": [str(y) for y in years],
+            "name": "Year",
+            "nameLocation": "middle",
+            "nameGap": 30,
+            "boundaryGap": False
+        },
+        "yAxis": {
+            "type": "value",
+            "name": "Share of US Imports (%)",
+            "nameLocation": "middle",
+            "nameGap": 45,
+            "min": 0,
+            "max": 25
+        },
+        "series": series,
+        "animation": True,
+        "animationDuration": 1500,
+        "animationEasing": "cubicOut"
+    }
 
 
 def create_era_composition_chart(df: pd.DataFrame, era_config: dict, top_n: int = 8) -> go.Figure:
@@ -470,11 +596,10 @@ def main():
     
     st.markdown("---")
     
-    # Main China Arc Chart (with all focus countries)
+    # Main China Arc Chart (with all focus countries) - ECharts version
     st.subheader("The Full Arc")
-    fig_arc = create_china_arc_chart(df, selected_era)
-    st.plotly_chart(fig_arc, use_container_width=True)
-    render_legend(FOCUS_COUNTRIES, COUNTRY_COLORS)
+    echart_options = create_china_arc_echart(df, selected_era)
+    st_echarts(options=echart_options, height="450px")
     
     # Era Deep Dive
     st.markdown("---")
