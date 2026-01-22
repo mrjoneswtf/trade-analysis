@@ -10,8 +10,6 @@ Run with: streamlit run dashboard/app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 from pathlib import Path
 from streamlit_echarts import st_echarts
 
@@ -122,91 +120,6 @@ def get_era_metrics(df: pd.DataFrame, era_config: dict) -> dict:
         "china_delta": china_end - china_start,
         "top_5": top_5
     }
-
-
-def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
-    """Create the main China trajectory chart with era shading and all focus countries."""
-    imports = df[df["trade_type"] == "import"]
-    china_data = imports[imports["country"] == "China"].sort_values("year")
-    
-    fig = go.Figure()
-    
-    # Add era shading
-    for era_name, era_config in ERAS.items():
-        opacity = 0.3 if era_name == selected_era else 0.1
-        fig.add_vrect(
-            x0=era_config["start"], x1=era_config["end"],
-            fillcolor=era_config["color"],
-            opacity=opacity,
-            layer="below",
-            line_width=0,
-            annotation_text=era_config["title"] if era_name == selected_era else "",
-            annotation_position="top left",
-            annotation_font_size=12
-        )
-    
-    # Add all focus countries (except China) first so they appear behind China
-    for country in FOCUS_COUNTRIES:
-        if country != "China":
-            country_data = imports[imports["country"] == country].sort_values("year")
-            if len(country_data) > 0:
-                color = COUNTRY_COLORS.get(country, "#6b7280")
-                fig.add_trace(go.Scatter(
-                    x=country_data["year"],
-                    y=country_data["share_pct"],
-                    mode="lines",
-                    name=country,
-                    line=dict(width=1.5, color=color),
-                    opacity=0.5,
-                    hovertemplate=f"<b>{country}</b><br>%{{x}}: %{{y:.1f}}%<extra></extra>"
-                ))
-    
-    # Add China line last (on top, prominent)
-    fig.add_trace(go.Scatter(
-        x=china_data["year"],
-        y=china_data["share_pct"],
-        mode="lines+markers",
-        name="China",
-        line=dict(color=COUNTRY_COLORS["China"], width=3),
-        marker=dict(size=6),
-        hovertemplate="<b>China</b><br>%{x}: %{y:.1f}%<extra></extra>"
-    ))
-    
-    # Add key event markers
-    events = [
-        (2001, "WTO Entry"),
-        (2008, "Financial Crisis"),
-        (2018, "Trade War"),
-        (2020, "COVID-19"),
-        (2023, "Mexico #1")
-    ]
-    
-    for year, label in events:
-        share = get_china_share(imports, year)
-        fig.add_annotation(
-            x=year, y=share + 1.5,
-            text=label,
-            showarrow=True,
-            arrowhead=2,
-            arrowsize=0.5,
-            arrowwidth=1,
-            ax=0, ay=-30,
-            font=dict(size=10)
-        )
-    
-    fig.update_layout(
-        title="China's Import Share: The Rise and Shift",
-        xaxis_title="Year",
-        yaxis_title="Share of US Imports (%)",
-        hovermode="x unified",
-        showlegend=False,
-        height=400,
-        margin=dict(t=60, b=40)
-    )
-    
-    fig.update_yaxes(range=[0, 25])
-    
-    return fig
 
 
 def create_china_arc_echart(df: pd.DataFrame, selected_era: str) -> dict:
@@ -348,8 +261,8 @@ def create_china_arc_echart(df: pd.DataFrame, selected_era: str) -> dict:
     }
 
 
-def create_era_composition_chart(df: pd.DataFrame, era_config: dict, top_n: int = 8) -> go.Figure:
-    """Create stacked area chart for era composition."""
+def create_era_composition_echart(df: pd.DataFrame, era_config: dict, top_n: int = 8) -> dict:
+    """Create ECharts stacked area chart for era composition."""
     imports = df[df["trade_type"] == "import"]
     era_data = imports[(imports["year"] >= era_config["start"]) & 
                        (imports["year"] <= era_config["end"])]
@@ -364,32 +277,54 @@ def create_era_composition_chart(df: pd.DataFrame, era_config: dict, top_n: int 
     )
     
     grouped = era_data.groupby(["year", "country_group"])["share_pct"].sum().reset_index()
+    years = sorted(grouped["year"].unique().tolist())
+    countries = grouped["country_group"].unique().tolist()
     
-    # Custom color sequence emphasizing China
-    colors = px.colors.qualitative.Set2
+    # Color palette
+    colors = ["#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3", "#1f78b4"]
     
-    fig = px.area(
-        grouped,
-        x="year",
-        y="share_pct",
-        color="country_group",
-        title=f"Import Composition: {era_config['start']}-{era_config['end']}",
-        color_discrete_sequence=colors
-    )
+    # Build series for each country
+    series = []
+    for i, country in enumerate(countries):
+        country_data = grouped[grouped["country_group"] == country].sort_values("year")
+        data_dict = dict(zip(country_data["year"], country_data["share_pct"].round(1)))
+        values = [data_dict.get(y, 0) for y in years]
+        
+        series.append({
+            "name": country,
+            "type": "line",
+            "stack": "Total",
+            "areaStyle": {"opacity": 0.8},
+            "emphasis": {"focus": "series"},
+            "data": values,
+            "smooth": True,
+            "itemStyle": {"color": colors[i % len(colors)]}
+        })
     
-    fig.update_layout(
-        xaxis_title="Year",
-        yaxis_title="Share of Total Imports (%)",
-        legend_title="Country",
-        height=400,
-        margin=dict(t=60, b=40)
-    )
-    
-    return fig
+    return {
+        "title": {
+            "text": f"Import Composition: {era_config['start']}-{era_config['end']}",
+            "left": "center",
+            "textStyle": {"fontSize": 14}
+        },
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"}},
+        "legend": {
+            "data": countries,
+            "bottom": 0,
+            "type": "scroll",
+            "textStyle": {"fontSize": 10}
+        },
+        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
+        "xAxis": {"type": "category", "data": [str(y) for y in years], "boundaryGap": False},
+        "yAxis": {"type": "value", "name": "Share (%)", "max": 100},
+        "series": series,
+        "animation": True,
+        "animationDuration": 1000
+    }
 
 
-def create_winners_losers_chart(df: pd.DataFrame, era_config: dict, top_n: int = 10) -> tuple:
-    """Create charts showing winners and losers in share change."""
+def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int = 10) -> tuple:
+    """Create ECharts horizontal bar charts for winners and losers."""
     imports = df[df["trade_type"] == "import"]
     
     start_data = imports[imports["year"] == era_config["start"]][["country", "share_pct"]]
@@ -401,81 +336,125 @@ def create_winners_losers_chart(df: pd.DataFrame, era_config: dict, top_n: int =
     
     comparison["share_change"] = comparison["share_pct_end"] - comparison["share_pct_start"]
     
-    # Winners
+    # Winners chart
     winners = comparison.nlargest(top_n, "share_change")
-    fig_winners = go.Figure(go.Bar(
-        x=winners["share_change"],
-        y=winners["country"],
-        orientation="h",
-        marker_color="#10b981",
-        text=winners["share_change"].apply(lambda x: f"+{x:.1f}pp"),
-        textposition="outside"
-    ))
-    fig_winners.update_layout(
-        title="Gained Share",
-        xaxis_title="Share Change (pp)",
-        yaxis=dict(autorange="reversed"),
-        height=350,
-        margin=dict(l=100, r=60, t=40, b=40)
-    )
+    winners_opts = {
+        "title": {"text": "Gained Share", "left": "center", "textStyle": {"fontSize": 14}},
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+        "grid": {"left": "25%", "right": "15%", "top": "15%", "bottom": "10%"},
+        "xAxis": {"type": "value", "name": "Share Change (pp)"},
+        "yAxis": {
+            "type": "category",
+            "data": winners["country"].tolist()[::-1],
+            "axisLabel": {"fontSize": 11}
+        },
+        "series": [{
+            "type": "bar",
+            "data": winners["share_change"].round(1).tolist()[::-1],
+            "itemStyle": {"color": "#10b981"},
+            "label": {
+                "show": True,
+                "position": "right",
+                "formatter": "+{c}pp",
+                "fontSize": 10
+            }
+        }],
+        "animation": True,
+        "animationDuration": 800
+    }
     
-    # Losers
+    # Losers chart
     losers = comparison.nsmallest(top_n, "share_change")
-    fig_losers = go.Figure(go.Bar(
-        x=losers["share_change"],
-        y=losers["country"],
-        orientation="h",
-        marker_color="#dc2626",
-        text=losers["share_change"].apply(lambda x: f"{x:.1f}pp"),
-        textposition="outside"
-    ))
-    fig_losers.update_layout(
-        title="Lost Share",
-        xaxis_title="Share Change (pp)",
-        yaxis=dict(autorange="reversed"),
-        height=350,
-        margin=dict(l=100, r=60, t=40, b=40)
-    )
+    losers_opts = {
+        "title": {"text": "Lost Share", "left": "center", "textStyle": {"fontSize": 14}},
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+        "grid": {"left": "25%", "right": "15%", "top": "15%", "bottom": "10%"},
+        "xAxis": {"type": "value", "name": "Share Change (pp)"},
+        "yAxis": {
+            "type": "category",
+            "data": losers["country"].tolist()[::-1],
+            "axisLabel": {"fontSize": 11}
+        },
+        "series": [{
+            "type": "bar",
+            "data": losers["share_change"].round(1).tolist()[::-1],
+            "itemStyle": {"color": "#dc2626"},
+            "label": {
+                "show": True,
+                "position": "left",
+                "formatter": "{c}pp",
+                "fontSize": 10
+            }
+        }],
+        "animation": True,
+        "animationDuration": 800
+    }
     
-    return fig_winners, fig_losers
+    return winners_opts, losers_opts
 
 
-def create_beneficiary_spotlight(df: pd.DataFrame, countries: list) -> go.Figure:
-    """Create chart highlighting beneficiary countries during Trade War era."""
+def create_beneficiary_spotlight_echart(df: pd.DataFrame, countries: list) -> dict:
+    """Create ECharts line chart for beneficiary countries."""
     imports = df[df["trade_type"] == "import"]
     spotlight = imports[imports["country"].isin(countries)].copy()
     
-    fig = px.line(
-        spotlight,
-        x="year",
-        y="share_pct",
-        color="country",
-        title="Emerging Beneficiaries: Who Gained from the Shift?",
-        markers=True
-    )
+    years = sorted(spotlight["year"].unique().tolist())
     
-    # Add Trade War shading
-    fig.add_vrect(
-        x0=2018, x1=2024,
-        fillcolor="#10b981",
-        opacity=0.1,
-        layer="below",
-        line_width=0
-    )
+    # Colors for beneficiary countries
+    colors = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899"]
     
-    fig.update_layout(
-        xaxis_title="Year",
-        yaxis_title="Share of US Imports (%)",
-        legend_title="Country",
-        height=400,
-        hovermode="x unified"
-    )
+    series = []
+    for i, country in enumerate(countries):
+        country_data = spotlight[spotlight["country"] == country].sort_values("year")
+        data_dict = dict(zip(country_data["year"], country_data["share_pct"].round(1)))
+        values = [data_dict.get(y, None) for y in years]
+        
+        series.append({
+            "name": country,
+            "type": "line",
+            "data": values,
+            "smooth": True,
+            "symbol": "circle",
+            "symbolSize": 6,
+            "lineStyle": {"width": 2},
+            "itemStyle": {"color": colors[i % len(colors)]},
+            "emphasis": {"focus": "series"}
+        })
     
-    return fig
+    # Add trade war shading to first series as markArea
+    if series:
+        series[0]["markArea"] = {
+            "silent": True,
+            "data": [[
+                {"xAxis": "2018", "itemStyle": {"color": "rgba(16, 185, 129, 0.1)"}},
+                {"xAxis": "2024"}
+            ]]
+        }
+    
+    return {
+        "title": {
+            "text": "Emerging Beneficiaries: Who Gained from the Shift?",
+            "left": "center",
+            "textStyle": {"fontSize": 14}
+        },
+        "tooltip": {"trigger": "axis"},
+        "legend": {
+            "data": countries,
+            "bottom": 0,
+            "type": "scroll",
+            "textStyle": {"fontSize": 11}
+        },
+        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
+        "xAxis": {"type": "category", "data": [str(y) for y in years], "boundaryGap": False},
+        "yAxis": {"type": "value", "name": "Share (%)"},
+        "series": series,
+        "animation": True,
+        "animationDuration": 1000
+    }
 
 
-def create_era_comparison_chart(df: pd.DataFrame) -> go.Figure:
-    """Create bar chart comparing China's share across eras."""
+def create_era_comparison_echart(df: pd.DataFrame) -> dict:
+    """Create ECharts grouped bar chart comparing China's share across eras."""
     imports = df[df["trade_type"] == "import"]
     
     era_data = []
@@ -484,43 +463,50 @@ def create_era_comparison_chart(df: pd.DataFrame) -> go.Figure:
         end_share = get_china_share(imports, config["end"])
         era_data.append({
             "era": era_name.split("(")[0].strip(),
-            "start": start_share,
-            "end": end_share,
+            "start": round(start_share, 1),
+            "end": round(end_share, 1),
             "color": config["color"]
         })
     
     df_eras = pd.DataFrame(era_data)
+    eras = df_eras["era"].tolist()
     
-    fig = go.Figure()
-    
-    fig.add_trace(go.Bar(
-        name="Era Start",
-        x=df_eras["era"],
-        y=df_eras["start"],
-        marker_color="#94a3b8",
-        text=df_eras["start"].apply(lambda x: f"{x:.1f}%"),
-        textposition="outside"
-    ))
-    
-    fig.add_trace(go.Bar(
-        name="Era End",
-        x=df_eras["era"],
-        y=df_eras["end"],
-        marker_color=df_eras["color"],
-        text=df_eras["end"].apply(lambda x: f"{x:.1f}%"),
-        textposition="outside"
-    ))
-    
-    fig.update_layout(
-        title="China's Share: Start vs End of Each Era",
-        xaxis_title="Era",
-        yaxis_title="Share of US Imports (%)",
-        barmode="group",
-        height=350,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02)
-    )
-    
-    return fig
+    return {
+        "title": {
+            "text": "China's Share: Start vs End of Each Era",
+            "left": "center",
+            "textStyle": {"fontSize": 14}
+        },
+        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+        "legend": {
+            "data": ["Era Start", "Era End"],
+            "top": "bottom",
+            "textStyle": {"fontSize": 11}
+        },
+        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
+        "xAxis": {"type": "category", "data": eras},
+        "yAxis": {"type": "value", "name": "Share (%)", "max": 25},
+        "series": [
+            {
+                "name": "Era Start",
+                "type": "bar",
+                "data": df_eras["start"].tolist(),
+                "itemStyle": {"color": "#94a3b8"},
+                "label": {"show": True, "position": "top", "formatter": "{c}%", "fontSize": 10}
+            },
+            {
+                "name": "Era End",
+                "type": "bar",
+                "data": [
+                    {"value": row["end"], "itemStyle": {"color": row["color"]}}
+                    for _, row in df_eras.iterrows()
+                ],
+                "label": {"show": True, "position": "top", "formatter": "{c}%", "fontSize": 10}
+            }
+        ],
+        "animation": True,
+        "animationDuration": 800
+    }
 
 
 def main():
@@ -608,25 +594,25 @@ def main():
     col1, col2 = st.columns(2)
     
     with col1:
-        fig_composition = create_era_composition_chart(df, era_config)
-        st.plotly_chart(fig_composition, use_container_width=True)
+        composition_opts = create_era_composition_echart(df, era_config)
+        st_echarts(options=composition_opts, height="400px")
     
     with col2:
-        fig_comparison = create_era_comparison_chart(df)
-        st.plotly_chart(fig_comparison, use_container_width=True)
+        comparison_opts = create_era_comparison_echart(df)
+        st_echarts(options=comparison_opts, height="350px")
     
     # Winners and Losers
     st.markdown("---")
     st.subheader(f"Winners & Losers: {era_config['start']} → {era_config['end']}")
     
     col1, col2 = st.columns(2)
-    fig_winners, fig_losers = create_winners_losers_chart(df, era_config)
+    winners_opts, losers_opts = create_winners_losers_echart(df, era_config)
     
     with col1:
-        st.plotly_chart(fig_winners, use_container_width=True)
+        st_echarts(options=winners_opts, height="350px")
     
     with col2:
-        st.plotly_chart(fig_losers, use_container_width=True)
+        st_echarts(options=losers_opts, height="350px")
     
     # Beneficiary Spotlight (only for Trade War era)
     if selected_era == "Trade War Era (2018-Present)":
@@ -634,8 +620,8 @@ def main():
         st.subheader("Beneficiary Spotlight: The China+1 Winners")
         
         spotlight_countries = ["Vietnam", "Mexico", "India", "Taiwan", "Thailand"]
-        fig_spotlight = create_beneficiary_spotlight(df, spotlight_countries)
-        st.plotly_chart(fig_spotlight, use_container_width=True)
+        spotlight_opts = create_beneficiary_spotlight_echart(df, spotlight_countries)
+        st_echarts(options=spotlight_opts, height="400px")
         
         # Growth metrics
         imports = df[df["trade_type"] == "import"]
