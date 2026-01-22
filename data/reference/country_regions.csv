@@ -1,0 +1,38 @@
+country,region,subregion,trade_group,notes
+China,Asia,East Asia,BRICS,Major trading partner
+Japan,Asia,East Asia,G7,Major trading partner
+South Korea,Asia,East Asia,OECD,Major trading partner
+Taiwan,Asia,East Asia,,Major electronics exporter
+Hong Kong,Asia,East Asia,,Special Administrative Region
+Vietnam,Asia,Southeast Asia,ASEAN,Rising manufacturing hub
+Thailand,Asia,Southeast Asia,ASEAN,Manufacturing hub
+Malaysia,Asia,Southeast Asia,ASEAN,Electronics and commodities
+Indonesia,Asia,Southeast Asia,ASEAN,Commodities and manufacturing
+Singapore,Asia,Southeast Asia,ASEAN,Trade hub
+Philippines,Asia,Southeast Asia,ASEAN,Services and manufacturing
+India,Asia,South Asia,BRICS,Rising manufacturing hub
+Bangladesh,Asia,South Asia,,Textiles
+Mexico,North America,Central America,USMCA,Major trading partner - nearshoring
+Canada,North America,Northern America,USMCA,Major trading partner
+Germany,Europe,Western Europe,EU/G7,Major trading partner
+United Kingdom,Europe,Northern Europe,G7,Major trading partner
+France,Europe,Western Europe,EU/G7,
+Italy,Europe,Southern Europe,EU/G7,
+Netherlands,Europe,Western Europe,EU,Trade hub
+Ireland,Europe,Northern Europe,EU,Tech and pharma
+Switzerland,Europe,Western Europe,EFTA,
+Poland,Europe,Eastern Europe,EU,Manufacturing
+Czech Republic,Europe,Eastern Europe,EU,Manufacturing
+Hungary,Europe,Eastern Europe,EU,Manufacturing
+Brazil,South America,South America,BRICS/Mercosur,Commodities
+Colombia,South America,South America,,
+Chile,South America,South America,OECD,Commodities
+Argentina,South America,South America,Mercosur,
+Saudi Arabia,Middle East,Western Asia,OPEC,Oil
+Israel,Middle East,Western Asia,,Tech
+United Arab Emirates,Middle East,Western Asia,OPEC,Oil and trade hub
+Russia,Europe/Asia,Eastern Europe,BRICS,Commodities (pre-sanctions)
+Australia,Oceania,Australia and New Zealand,OECD,Commodities
+South Africa,Africa,Southern Africa,BRICS,Commodities
+Nigeria,Africa,Western Africa,OPEC,Oil
+Egypt,Africa,Northern Africa,,
