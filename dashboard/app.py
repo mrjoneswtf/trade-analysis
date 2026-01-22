@@ -200,14 +200,15 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
         hovermode="x unified",
         showlegend=True,
         legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            orientation="v",
+            yanchor="top",
+            y=-0.15,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=10),
         ),
-        height=400,
-        margin=dict(t=60, b=40)
+        height=500,
+        margin=dict(t=60, b=150)
     )
     
     fig.update_yaxes(range=[0, 25])
