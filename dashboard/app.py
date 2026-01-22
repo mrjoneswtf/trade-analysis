@@ -66,6 +66,20 @@ ERAS = {
 FOCUS_COUNTRIES = ["China", "Mexico", "Canada", "Vietnam", "Japan", "Germany", "South Korea", "Taiwan", "India", "Ireland"]
 BENEFICIARY_COUNTRIES = ["Vietnam", "Mexico", "India", "Taiwan", "South Korea", "Thailand", "Malaysia", "Indonesia"]
 
+# Hardcoded colors for each country
+COUNTRY_COLORS = {
+    "China": "#dc2626",      # Red (prominent)
+    "Mexico": "#2563eb",     # Blue
+    "Canada": "#16a34a",     # Green
+    "Vietnam": "#9333ea",    # Purple
+    "Japan": "#ea580c",      # Orange
+    "Germany": "#0891b2",    # Cyan
+    "South Korea": "#4f46e5",# Indigo
+    "Taiwan": "#be185d",     # Pink
+    "India": "#ca8a04",      # Yellow
+    "Ireland": "#65a30d",    # Lime
+}
+
 
 @st.cache_data
 def load_data() -> pd.DataFrame:
@@ -109,8 +123,8 @@ def get_era_metrics(df: pd.DataFrame, era_config: dict) -> dict:
     }
 
 
-def create_china_arc_chart(df: pd.DataFrame, selected_era: str, compare_countries: list = None) -> go.Figure:
-    """Create the main China trajectory chart with era shading and comparison countries."""
+def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
+    """Create the main China trajectory chart with era shading and all focus countries."""
     imports = df[df["trade_type"] == "import"]
     china_data = imports[imports["country"] == "China"].sort_values("year")
     
@@ -130,21 +144,21 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str, compare_countrie
             annotation_font_size=12
         )
     
-    # Add comparison countries first (so they appear behind China)
-    if compare_countries:
-        for country in compare_countries:
-            if country != "China":
-                country_data = imports[imports["country"] == country].sort_values("year")
-                if len(country_data) > 0:
-                    fig.add_trace(go.Scatter(
-                        x=country_data["year"],
-                        y=country_data["share_pct"],
-                        mode="lines",
-                        name=country,
-                        line=dict(width=1.5),
-                        opacity=0.5,
-                        hovertemplate=f"<b>{country}</b><br>%{{x}}: %{{y:.1f}}%<extra></extra>"
-                    ))
+    # Add all focus countries (except China) first so they appear behind China
+    for country in FOCUS_COUNTRIES:
+        if country != "China":
+            country_data = imports[imports["country"] == country].sort_values("year")
+            if len(country_data) > 0:
+                color = COUNTRY_COLORS.get(country, "#6b7280")
+                fig.add_trace(go.Scatter(
+                    x=country_data["year"],
+                    y=country_data["share_pct"],
+                    mode="lines",
+                    name=country,
+                    line=dict(width=1.5, color=color),
+                    opacity=0.5,
+                    hovertemplate=f"<b>{country}</b><br>%{{x}}: %{{y:.1f}}%<extra></extra>"
+                ))
     
     # Add China line last (on top, prominent)
     fig.add_trace(go.Scatter(
@@ -152,7 +166,7 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str, compare_countrie
         y=china_data["share_pct"],
         mode="lines+markers",
         name="China",
-        line=dict(color="#dc2626", width=3),
+        line=dict(color=COUNTRY_COLORS["China"], width=3),
         marker=dict(size=6),
         hovertemplate="<b>China</b><br>%{x}: %{y:.1f}%<extra></extra>"
     ))
@@ -179,15 +193,12 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str, compare_countrie
             font=dict(size=10)
         )
     
-    # Show legend only if there are comparison countries
-    show_legend = compare_countries and len([c for c in compare_countries if c != "China"]) > 0
-    
     fig.update_layout(
         title="China's Import Share: The Rise and Shift",
         xaxis_title="Year",
         yaxis_title="Share of US Imports (%)",
         hovermode="x unified",
-        showlegend=show_legend,
+        showlegend=True,
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -412,14 +423,6 @@ def main():
     st.sidebar.markdown(era_config["description"])
     st.sidebar.info(f"📌 **Key Event:** {era_config['key_event']}")
     
-    # Compare countries
-    st.sidebar.markdown("---")
-    compare_countries = st.sidebar.multiselect(
-        "Compare Countries",
-        FOCUS_COUNTRIES,
-        default=["China", "Mexico", "Vietnam"]
-    )
-    
     # Get era metrics
     metrics = get_era_metrics(df, era_config)
     
@@ -460,9 +463,9 @@ def main():
     
     st.markdown("---")
     
-    # Main China Arc Chart (with comparison countries)
+    # Main China Arc Chart (with all focus countries)
     st.subheader("The Full Arc")
-    fig_arc = create_china_arc_chart(df, selected_era, compare_countries)
+    fig_arc = create_china_arc_chart(df, selected_era)
     st.plotly_chart(fig_arc, use_container_width=True)
     
     # Era Deep Dive
