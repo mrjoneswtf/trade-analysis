@@ -9,7 +9,6 @@ Run with: streamlit run dashboard/app.py
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 from pathlib import Path
 from streamlit_echarts import st_echarts
 
@@ -18,8 +17,111 @@ st.set_page_config(
     page_title="The China Story Arc",
     page_icon="🌏",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
+
+# Mobile-first CSS
+st.markdown("""
+<style>
+/* Compact header */
+.compact-header h1 {
+    font-size: 1.5rem !important;
+    margin: 0 0 0.25rem 0 !important;
+    font-weight: 700;
+}
+.compact-header p {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Era tabs styling */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+    padding: 0 0.25rem;
+}
+
+/* Responsive metrics grid */
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+}
+@media (min-width: 768px) {
+    .metric-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+.metric-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+.metric-card .label {
+    font-size: 0.7rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+.metric-card .value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+.metric-card .delta {
+    font-size: 0.75rem;
+    margin-top: 0.125rem;
+}
+.metric-card .delta.positive { color: #10b981; }
+.metric-card .delta.negative { color: #dc2626; }
+
+/* Growth cards grid */
+.growth-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+}
+@media (min-width: 640px) {
+    .growth-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (min-width: 768px) {
+    .growth-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+/* Smooth transitions */
+iframe {
+    transition: opacity 0.3s ease;
+}
+
+/* Hide sidebar on mobile */
+@media (max-width: 768px) {
+    section[data-testid="stSidebar"] {
+        display: none;
+    }
+}
+
+/* Tighter spacing on mobile */
+@media (max-width: 768px) {
+    .block-container {
+        padding: 1rem 0.75rem !important;
+    }
+    h2 {
+        font-size: 1.1rem !important;
+    }
+    h3 {
+        font-size: 1rem !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
 
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -63,7 +165,6 @@ ERAS = {
 
 # Key countries for comparison
 FOCUS_COUNTRIES = ["China", "Mexico", "Canada", "Vietnam", "Japan", "Germany", "South Korea", "Taiwan", "India", "Ireland"]
-BENEFICIARY_COUNTRIES = ["Vietnam", "Mexico", "India", "Taiwan", "South Korea", "Thailand", "Malaysia", "Indonesia"]
 
 # Hardcoded colors for each country
 COUNTRY_COLORS = {
@@ -261,68 +362,6 @@ def create_china_arc_echart(df: pd.DataFrame, selected_era: str) -> dict:
     }
 
 
-def create_era_composition_echart(df: pd.DataFrame, era_config: dict, top_n: int = 8) -> dict:
-    """Create ECharts stacked area chart for era composition."""
-    imports = df[df["trade_type"] == "import"]
-    era_data = imports[(imports["year"] >= era_config["start"]) & 
-                       (imports["year"] <= era_config["end"])]
-    
-    # Get top countries for this era
-    top_countries = era_data.groupby("country")["value_real"].sum().nlargest(top_n).index.tolist()
-    
-    # Prepare data
-    era_data = era_data.copy()
-    era_data["country_group"] = era_data["country"].apply(
-        lambda x: x if x in top_countries else "Other"
-    )
-    
-    grouped = era_data.groupby(["year", "country_group"])["share_pct"].sum().reset_index()
-    years = sorted(grouped["year"].unique().tolist())
-    countries = grouped["country_group"].unique().tolist()
-    
-    # Color palette
-    colors = ["#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f", "#e5c494", "#b3b3b3", "#1f78b4"]
-    
-    # Build series for each country
-    series = []
-    for i, country in enumerate(countries):
-        country_data = grouped[grouped["country_group"] == country].sort_values("year")
-        data_dict = dict(zip(country_data["year"], country_data["share_pct"].round(1)))
-        values = [data_dict.get(y, 0) for y in years]
-        
-        series.append({
-            "name": country,
-            "type": "line",
-            "stack": "Total",
-            "areaStyle": {"opacity": 0.8},
-            "emphasis": {"focus": "series"},
-            "data": values,
-            "smooth": True,
-            "itemStyle": {"color": colors[i % len(colors)]}
-        })
-    
-    return {
-        "title": {
-            "text": f"Import Composition: {era_config['start']}-{era_config['end']}",
-            "left": "center",
-            "textStyle": {"fontSize": 14}
-        },
-        "tooltip": {"trigger": "axis", "axisPointer": {"type": "cross"}},
-        "legend": {
-            "data": countries,
-            "bottom": 0,
-            "type": "scroll",
-            "textStyle": {"fontSize": 10}
-        },
-        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
-        "xAxis": {"type": "category", "data": [str(y) for y in years], "boundaryGap": False},
-        "yAxis": {"type": "value", "name": "Share (%)", "max": 100},
-        "series": series,
-        "animation": True,
-        "animationDuration": 1000
-    }
-
-
 def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int = 10) -> tuple:
     """Create ECharts horizontal bar charts for winners and losers."""
     imports = df[df["trade_type"] == "import"]
@@ -393,66 +432,6 @@ def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int 
     return winners_opts, losers_opts
 
 
-def create_beneficiary_spotlight_echart(df: pd.DataFrame, countries: list) -> dict:
-    """Create ECharts line chart for beneficiary countries."""
-    imports = df[df["trade_type"] == "import"]
-    spotlight = imports[imports["country"].isin(countries)].copy()
-    
-    years = sorted(spotlight["year"].unique().tolist())
-    
-    # Colors for beneficiary countries
-    colors = ["#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ec4899"]
-    
-    series = []
-    for i, country in enumerate(countries):
-        country_data = spotlight[spotlight["country"] == country].sort_values("year")
-        data_dict = dict(zip(country_data["year"], country_data["share_pct"].round(1)))
-        values = [data_dict.get(y, None) for y in years]
-        
-        series.append({
-            "name": country,
-            "type": "line",
-            "data": values,
-            "smooth": True,
-            "symbol": "circle",
-            "symbolSize": 6,
-            "lineStyle": {"width": 2},
-            "itemStyle": {"color": colors[i % len(colors)]},
-            "emphasis": {"focus": "series"}
-        })
-    
-    # Add trade war shading to first series as markArea
-    if series:
-        series[0]["markArea"] = {
-            "silent": True,
-            "data": [[
-                {"xAxis": "2018", "itemStyle": {"color": "rgba(16, 185, 129, 0.1)"}},
-                {"xAxis": "2024"}
-            ]]
-        }
-    
-    return {
-        "title": {
-            "text": "Emerging Beneficiaries: Who Gained from the Shift?",
-            "left": "center",
-            "textStyle": {"fontSize": 14}
-        },
-        "tooltip": {"trigger": "axis"},
-        "legend": {
-            "data": countries,
-            "bottom": 0,
-            "type": "scroll",
-            "textStyle": {"fontSize": 11}
-        },
-        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
-        "xAxis": {"type": "category", "data": [str(y) for y in years], "boundaryGap": False},
-        "yAxis": {"type": "value", "name": "Share (%)"},
-        "series": series,
-        "animation": True,
-        "animationDuration": 1000
-    }
-
-
 def create_era_comparison_echart(df: pd.DataFrame) -> dict:
     """Create ECharts grouped bar chart comparing China's share across eras."""
     imports = df[df["trade_type"] == "import"]
@@ -510,9 +489,13 @@ def create_era_comparison_echart(df: pd.DataFrame) -> dict:
 
 
 def main():
-    # Header
-    st.title("🌏 The China Story Arc")
-    st.markdown("### How America's Supply Chain Shifted (1995-2024)")
+    # Compact Header
+    st.markdown("""
+    <div class="compact-header">
+        <h1>The China Story Arc</h1>
+        <p>How America's Supply Chain Shifted · 1995-2024</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Load data
     df = load_data()
@@ -526,59 +509,49 @@ def main():
         )
         return
     
-    # Sidebar - Era Selection
-    st.sidebar.header("Navigate the Story")
-    
-    selected_era = st.sidebar.radio(
+    # Inline Era Tabs (horizontal, scrollable on mobile)
+    selected_era = st.radio(
         "Select Era",
         list(ERAS.keys()),
-        index=3  # Default to Trade War Era
+        index=3,  # Default to Trade War Era
+        horizontal=True,
+        label_visibility="collapsed"
     )
     
     era_config = ERAS[selected_era]
     
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(f"### {era_config['title']}")
-    st.sidebar.markdown(era_config["description"])
-    st.sidebar.info(f"📌 **Key Event:** {era_config['key_event']}")
+    # Era context - compact inline description
+    st.caption(f"**{era_config['title']}:** {era_config['description']}")
     
     # Get era metrics
     metrics = get_era_metrics(df, era_config)
     
-    # Era Summary Metrics
-    col1, col2, col3, col4 = st.columns(4)
+    # Responsive metrics grid (2x2 on mobile, 4 col on desktop)
+    delta_class = "positive" if metrics['china_delta'] > 0 else "negative"
+    top_country = metrics['top_5'].iloc[0] if len(metrics['top_5']) > 0 else {"country": "N/A", "share_pct": 0}
     
-    with col1:
-        st.metric(
-            "China Share (Start)",
-            f"{metrics['china_start']:.1f}%",
-            help=f"China's share of US imports in {era_config['start']}"
-        )
-    
-    with col2:
-        st.metric(
-            "China Share (End)",
-            f"{metrics['china_end']:.1f}%",
-            help=f"China's share of US imports in {era_config['end']}"
-        )
-    
-    with col3:
-        delta_color = "normal" if metrics['china_delta'] > 0 else "inverse"
-        st.metric(
-            "Change",
-            f"{metrics['china_delta']:+.1f}pp",
-            delta=f"{metrics['china_delta']:+.1f} percentage points",
-            delta_color=delta_color
-        )
-    
-    with col4:
-        if len(metrics['top_5']) > 0:
-            top_country = metrics['top_5'].iloc[0]
-            st.metric(
-                f"#1 in {era_config['end']}",
-                top_country['country'],
-                f"{top_country['share_pct']:.1f}%"
-            )
+    st.markdown(f"""
+    <div class="metric-grid">
+        <div class="metric-card">
+            <div class="label">China {era_config['start']}</div>
+            <div class="value">{metrics['china_start']:.1f}%</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">China {era_config['end']}</div>
+            <div class="value">{metrics['china_end']:.1f}%</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">Change</div>
+            <div class="value">{metrics['china_delta']:+.1f}pp</div>
+            <div class="delta {delta_class}">{metrics['china_delta']:+.1f} pts</div>
+        </div>
+        <div class="metric-card">
+            <div class="label">#1 in {era_config['end']}</div>
+            <div class="value">{top_country['country']}</div>
+            <div class="delta">{top_country['share_pct']:.1f}%</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -587,19 +560,11 @@ def main():
     echart_options = create_china_arc_echart(df, selected_era)
     st_echarts(options=echart_options, height="450px")
     
-    # Era Deep Dive
+    # Era Comparison - full width
     st.markdown("---")
-    st.subheader(f"Era Deep Dive: {selected_era}")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        composition_opts = create_era_composition_echart(df, era_config)
-        st_echarts(options=composition_opts, height="400px")
-    
-    with col2:
-        comparison_opts = create_era_comparison_echart(df)
-        st_echarts(options=comparison_opts, height="350px")
+    st.subheader("China Across Eras")
+    comparison_opts = create_era_comparison_echart(df)
+    st_echarts(options=comparison_opts, height="300px")
     
     # Winners and Losers
     st.markdown("---")
@@ -614,22 +579,17 @@ def main():
     with col2:
         st_echarts(options=losers_opts, height="350px")
     
-    # Beneficiary Spotlight (only for Trade War era)
+    # Trade War Beneficiaries - Growth cards (only for Trade War era)
     if selected_era == "Trade War Era (2018-Present)":
         st.markdown("---")
-        st.subheader("Beneficiary Spotlight: The China+1 Winners")
+        st.subheader("Trade War Beneficiaries")
         
         spotlight_countries = ["Vietnam", "Mexico", "India", "Taiwan", "Thailand"]
-        spotlight_opts = create_beneficiary_spotlight_echart(df, spotlight_countries)
-        st_echarts(options=spotlight_opts, height="400px")
-        
-        # Growth metrics
         imports = df[df["trade_type"] == "import"]
         
-        st.markdown("#### Growth Since Trade War Began (2018)")
-        cols = st.columns(len(spotlight_countries))
-        
-        for i, country in enumerate(spotlight_countries):
+        # Build responsive growth cards
+        growth_cards_html = []
+        for country in spotlight_countries:
             share_2018 = imports[(imports["country"] == country) & (imports["year"] == 2018)]["share_pct"]
             share_2024 = imports[(imports["country"] == country) & (imports["year"] == 2024)]["share_pct"]
             
@@ -637,13 +597,16 @@ def main():
                 start = share_2018.values[0]
                 end = share_2024.values[0]
                 growth = ((end - start) / start) * 100 if start > 0 else 0
-                
-                with cols[i]:
-                    st.metric(
-                        country,
-                        f"{end:.1f}%",
-                        f"+{growth:.0f}% growth"
-                    )
+                growth_cards_html.append(
+                    f'<div class="metric-card">'
+                    f'<div class="label">{country}</div>'
+                    f'<div class="value">{end:.1f}%</div>'
+                    f'<div class="delta positive">+{growth:.0f}% since 2018</div>'
+                    f'</div>'
+                )
+        
+        cards_html = ''.join(growth_cards_html)
+        st.markdown(f'<div class="growth-grid">{cards_html}</div>', unsafe_allow_html=True)
     
     # Data Explorer (collapsed)
     with st.expander("📊 Data Explorer"):
