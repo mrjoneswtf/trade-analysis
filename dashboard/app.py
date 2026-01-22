@@ -11,6 +11,8 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 from streamlit_echarts import st_echarts
+import streamlit_antd_components as sac
+import streamlit_shadcn_ui as ui
 
 # Page config
 st.set_page_config(
@@ -36,65 +38,9 @@ st.markdown("""
     margin: 0;
 }
 
-/* Era tabs styling */
+/* Column spacing */
 div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
     padding: 0 0.25rem;
-}
-
-/* Responsive metrics grid */
-.metric-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-}
-@media (min-width: 768px) {
-    .metric-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-.metric-card {
-    background: #1e1e1e;
-    border-radius: 0.75rem;
-    padding: 0.75rem;
-    text-align: center;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-.metric-card .label {
-    font-size: 0.7rem;
-    color: rgba(255,255,255,0.60);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.25rem;
-}
-.metric-card .value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: rgba(255,255,255,0.87);
-}
-.metric-card .delta {
-    font-size: 0.75rem;
-    margin-top: 0.125rem;
-}
-.metric-card .delta.positive { color: #4ade80; }
-.metric-card .delta.negative { color: #CF6679; }
-
-/* Growth cards grid */
-.growth-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-    margin: 0.5rem 0;
-}
-@media (min-width: 640px) {
-    .growth-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-@media (min-width: 768px) {
-    .growth-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
 }
 
 /* Smooth transitions */
@@ -102,18 +48,15 @@ iframe {
     transition: opacity 0.3s ease;
 }
 
-/* Hide sidebar on mobile */
-@media (max-width: 768px) {
-    section[data-testid="stSidebar"] {
-        display: none;
-    }
+/* Hide sidebar */
+section[data-testid="stSidebar"] {
+    display: none;
 }
 
 /* Tighter spacing on mobile */
 @media (max-width: 768px) {
     .block-container {
         padding: 1rem 0.75rem !important;
-        padding-bottom: 5rem !important;
     }
     h2 {
         font-size: 1.1rem !important;
@@ -123,77 +66,16 @@ iframe {
     }
 }
 
-/* Era navigation buttons */
-.era-nav {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    width: 100%;
-    background: #1e1e1e;
-    margin: 0.5rem 0;
-    border-top: 1px solid rgba(255,255,255,0.12);
+/* Antd segmented control dark theme styling */
+.ant-segmented {
+    background: #1e1e1e !important;
 }
-
-@media (max-width: 768px) {
-    .era-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 999;
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.4);
-        margin: 0;
-    }
+.ant-segmented-item {
+    color: rgba(255,255,255,0.60) !important;
 }
-
-.era-btn {
-    padding: 0.6rem 0.25rem;
-    text-align: center;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    display: block;
-}
-
-.era-btn .name {
-    font-size: 0.75rem;
-    font-weight: 600;
-    display: block;
-}
-
-.era-btn .years {
-    font-size: 0.65rem;
-    opacity: 0.7;
-    display: block;
-    margin-top: 0.125rem;
-}
-
-.era-btn.selected {
-    color: white;
-}
-
-.era-btn:not(.selected) {
-    background: #1e1e1e;
-    color: rgba(255,255,255,0.60);
-}
-
-.era-btn:not(.selected):hover {
-    background: #282828;
-    color: rgba(255,255,255,0.87);
-}
-
-/* Hide default Streamlit radio on mobile */
-@media (max-width: 768px) {
-    div[data-testid="stRadio"] {
-        display: none !important;
-    }
-}
-
-/* Hide custom era nav on desktop */
-@media (min-width: 769px) {
-    .era-nav {
-        display: none;
-    }
+.ant-segmented-item-selected {
+    background: #f87171 !important;
+    color: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -584,88 +466,71 @@ def main():
         )
         return
     
-    # Get era from query params or default to Trade War Era
+    # Era selection with antd segmented control
     era_keys = list(ERAS.keys())
-    query_era = st.query_params.get("era", None)
     
-    # Determine selected era index
-    if query_era and query_era in era_keys:
-        default_index = era_keys.index(query_era)
-    else:
-        default_index = 3  # Trade War Era
+    # Build segmented items and mapping
+    era_items = []
+    label_to_key = {}
+    for era_key in era_keys:
+        era_info = ERAS[era_key]
+        name_parts = era_key.split("(")
+        era_name = name_parts[0].strip()
+        era_items.append(sac.SegmentedItem(label=era_name))
+        label_to_key[era_name] = era_key
     
-    # Desktop: Streamlit radio (hidden on mobile via CSS)
-    selected_era = st.radio(
-        "Select Era",
-        era_keys,
-        index=default_index,
-        horizontal=True,
-        label_visibility="collapsed",
-        key="era_radio"
+    selected_label = sac.segmented(
+        items=era_items,
+        index=3,  # Default to Trade War Era
+        align="center",
+        size="sm",
+        radius="md",
+        color="red",
+        bg_color="transparent",
+        divider=False,
+        use_container_width=True,
     )
     
-    # Update query params when radio changes
-    st.query_params["era"] = selected_era
-    
+    # Map label back to full era key
+    selected_era = label_to_key.get(selected_label, era_keys[3])
     era_config = ERAS[selected_era]
     
     # Era context - compact inline description
     st.caption(f"**{era_config['title']}:** {era_config['description']}")
     
-    # Mobile: Custom sticky bottom navigation (hidden on desktop via CSS)
-    era_buttons_html = []
-    for era_key in era_keys:
-        era_info = ERAS[era_key]
-        # Extract just the era name (before parenthesis) and years
-        name_parts = era_key.split("(")
-        era_name = name_parts[0].strip()
-        era_years = f"{era_info['start']}-{era_info['end']}"
-        
-        is_selected = era_key == selected_era
-        selected_class = "selected" if is_selected else ""
-        bg_style = f"background-color: {era_info['color']};" if is_selected else ""
-        
-        era_buttons_html.append(
-            f'<a href="?era={era_key}" target="_self" class="era-btn {selected_class}" style="{bg_style}">'
-            f'<span class="name">{era_name}</span>'
-            f'<span class="years">{era_years}</span>'
-            f'</a>'
-        )
-    
-    st.markdown(
-        f'<div class="era-nav">{"".join(era_buttons_html)}</div>',
-        unsafe_allow_html=True
-    )
-    
     # Get era metrics
     metrics = get_era_metrics(df, era_config)
-    
-    # Responsive metrics grid (2x2 on mobile, 4 col on desktop)
-    delta_class = "positive" if metrics['china_delta'] > 0 else "negative"
     top_country = metrics['top_5'].iloc[0] if len(metrics['top_5']) > 0 else {"country": "N/A", "share_pct": 0}
     
-    st.markdown(f"""
-    <div class="metric-grid">
-        <div class="metric-card">
-            <div class="label">China {era_config['start']}</div>
-            <div class="value">{metrics['china_start']:.1f}%</div>
-        </div>
-        <div class="metric-card">
-            <div class="label">China {era_config['end']}</div>
-            <div class="value">{metrics['china_end']:.1f}%</div>
-        </div>
-        <div class="metric-card">
-            <div class="label">Change</div>
-            <div class="value">{metrics['china_delta']:+.1f}pp</div>
-            <div class="delta {delta_class}">{metrics['china_delta']:+.1f} pts</div>
-        </div>
-        <div class="metric-card">
-            <div class="label">#1 in {era_config['end']}</div>
-            <div class="value">{top_country['country']}</div>
-            <div class="delta">{top_country['share_pct']:.1f}%</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Metric cards using shadcn
+    cols = st.columns(4)
+    with cols[0]:
+        ui.metric_card(
+            title=f"China {era_config['start']}",
+            content=f"{metrics['china_start']:.1f}%",
+            key="metric_start"
+        )
+    with cols[1]:
+        ui.metric_card(
+            title=f"China {era_config['end']}",
+            content=f"{metrics['china_end']:.1f}%",
+            key="metric_end"
+        )
+    with cols[2]:
+        delta_str = f"{metrics['china_delta']:+.1f}pp"
+        ui.metric_card(
+            title="Change",
+            content=delta_str,
+            description=f"{metrics['china_delta']:+.1f} pts",
+            key="metric_change"
+        )
+    with cols[3]:
+        ui.metric_card(
+            title=f"#1 in {era_config['end']}",
+            content=top_country['country'],
+            description=f"{top_country['share_pct']:.1f}%",
+            key="metric_top"
+        )
     
     st.markdown("---")
     
@@ -701,8 +566,8 @@ def main():
         spotlight_countries = ["Vietnam", "Mexico", "India", "Taiwan", "Thailand"]
         imports = df[df["trade_type"] == "import"]
         
-        # Build responsive growth cards
-        growth_cards_html = []
+        # Build growth data
+        growth_data = []
         for country in spotlight_countries:
             share_2018 = imports[(imports["country"] == country) & (imports["year"] == 2018)]["share_pct"]
             share_2024 = imports[(imports["country"] == country) & (imports["year"] == 2024)]["share_pct"]
@@ -711,16 +576,18 @@ def main():
                 start = share_2018.values[0]
                 end = share_2024.values[0]
                 growth = ((end - start) / start) * 100 if start > 0 else 0
-                growth_cards_html.append(
-                    f'<div class="metric-card">'
-                    f'<div class="label">{country}</div>'
-                    f'<div class="value">{end:.1f}%</div>'
-                    f'<div class="delta positive">+{growth:.0f}% since 2018</div>'
-                    f'</div>'
-                )
+                growth_data.append({"country": country, "share": end, "growth": growth})
         
-        cards_html = ''.join(growth_cards_html)
-        st.markdown(f'<div class="growth-grid">{cards_html}</div>', unsafe_allow_html=True)
+        # Display with shadcn metric cards
+        growth_cols = st.columns(len(growth_data))
+        for i, data in enumerate(growth_data):
+            with growth_cols[i]:
+                ui.metric_card(
+                    title=data["country"],
+                    content=f"{data['share']:.1f}%",
+                    description=f"+{data['growth']:.0f}% since 2018",
+                    key=f"growth_{data['country']}"
+                )
     
     # Data Explorer (collapsed)
     with st.expander("📊 Data Explorer"):

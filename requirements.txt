@@ -19,6 +19,8 @@ nbconvert>=7.0.0  # For exporting notebooks to HTML/PDF
 # Dashboard
 streamlit>=1.30.0
 streamlit-echarts>=0.4.0
+streamlit-shadcn-ui>=0.1.0
+streamlit-antd-components>=0.3.0
 
 # Data fetching
 requests>=2.31.0
