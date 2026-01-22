@@ -112,12 +112,84 @@ iframe {
 @media (max-width: 768px) {
     .block-container {
         padding: 1rem 0.75rem !important;
+        padding-bottom: 5rem !important;
     }
     h2 {
         font-size: 1.1rem !important;
     }
     h3 {
         font-size: 1rem !important;
+    }
+}
+
+/* Era navigation buttons */
+.era-nav {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
+    background: white;
+    margin: 0.5rem 0;
+}
+
+@media (max-width: 768px) {
+    .era-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+        margin: 0;
+    }
+}
+
+.era-btn {
+    padding: 0.6rem 0.25rem;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: block;
+}
+
+.era-btn .name {
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: block;
+}
+
+.era-btn .years {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    display: block;
+    margin-top: 0.125rem;
+}
+
+.era-btn.selected {
+    color: white;
+}
+
+.era-btn:not(.selected) {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.era-btn:not(.selected):hover {
+    background: #e2e8f0;
+}
+
+/* Hide default Streamlit radio on mobile */
+@media (max-width: 768px) {
+    div[data-testid="stRadio"] {
+        display: none !important;
+    }
+}
+
+/* Hide custom era nav on desktop */
+@media (min-width: 769px) {
+    .era-nav {
+        display: none;
     }
 }
 </style>
@@ -509,19 +581,58 @@ def main():
         )
         return
     
-    # Inline Era Tabs (horizontal, scrollable on mobile)
+    # Get era from query params or default to Trade War Era
+    era_keys = list(ERAS.keys())
+    query_era = st.query_params.get("era", None)
+    
+    # Determine selected era index
+    if query_era and query_era in era_keys:
+        default_index = era_keys.index(query_era)
+    else:
+        default_index = 3  # Trade War Era
+    
+    # Desktop: Streamlit radio (hidden on mobile via CSS)
     selected_era = st.radio(
         "Select Era",
-        list(ERAS.keys()),
-        index=3,  # Default to Trade War Era
+        era_keys,
+        index=default_index,
         horizontal=True,
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="era_radio"
     )
+    
+    # Update query params when radio changes
+    st.query_params["era"] = selected_era
     
     era_config = ERAS[selected_era]
     
     # Era context - compact inline description
     st.caption(f"**{era_config['title']}:** {era_config['description']}")
+    
+    # Mobile: Custom sticky bottom navigation (hidden on desktop via CSS)
+    era_buttons_html = []
+    for era_key in era_keys:
+        era_info = ERAS[era_key]
+        # Extract just the era name (before parenthesis) and years
+        name_parts = era_key.split("(")
+        era_name = name_parts[0].strip()
+        era_years = f"{era_info['start']}-{era_info['end']}"
+        
+        is_selected = era_key == selected_era
+        selected_class = "selected" if is_selected else ""
+        bg_style = f"background-color: {era_info['color']};" if is_selected else ""
+        
+        era_buttons_html.append(
+            f'<a href="?era={era_key}" class="era-btn {selected_class}" style="{bg_style}">'
+            f'<span class="name">{era_name}</span>'
+            f'<span class="years">{era_years}</span>'
+            f'</a>'
+        )
+    
+    st.markdown(
+        f'<div class="era-nav">{"".join(era_buttons_html)}</div>',
+        unsafe_allow_html=True
+    )
     
     # Get era metrics
     metrics = get_era_metrics(df, era_config)
