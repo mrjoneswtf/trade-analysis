@@ -81,6 +81,20 @@ COUNTRY_COLORS = {
 }
 
 
+def render_legend(countries: list[str], colors: dict[str, str]):
+    """Render two-column legend using Streamlit columns."""
+    col1, col2 = st.columns(2)
+    mid = (len(countries) + 1) // 2
+    
+    for i, country in enumerate(countries):
+        target = col1 if i < mid else col2
+        color = colors.get(country, "#888")
+        target.markdown(
+            f'<span style="color:{color}; font-size: 14px;">●</span> {country}',
+            unsafe_allow_html=True
+        )
+
+
 @st.cache_data
 def load_data() -> pd.DataFrame:
     """Load processed trade data."""
@@ -198,17 +212,9 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
         xaxis_title="Year",
         yaxis_title="Share of US Imports (%)",
         hovermode="x unified",
-        showlegend=True,
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=-0.15,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=10),
-        ),
-        height=500,
-        margin=dict(t=60, b=150)
+        showlegend=False,
+        height=400,
+        margin=dict(t=60, b=40)
     )
     
     fig.update_yaxes(range=[0, 25])
@@ -468,6 +474,7 @@ def main():
     st.subheader("The Full Arc")
     fig_arc = create_china_arc_chart(df, selected_era)
     st.plotly_chart(fig_arc, use_container_width=True)
+    render_legend(FOCUS_COUNTRIES, COUNTRY_COLORS)
     
     # Era Deep Dive
     st.markdown("---")
