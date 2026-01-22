@@ -10,6 +10,7 @@ Run with: streamlit run dashboard/app.py
 import streamlit as st
 import pandas as pd
 from pathlib import Path
+from urllib.parse import quote
 from streamlit_echarts import st_echarts
 import streamlit_antd_components as sac
 import streamlit_shadcn_ui as ui
@@ -22,61 +23,172 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Mobile-first CSS
-st.markdown("""
+# =============================================================================
+# MATERIAL DESIGN DARK THEME PALETTE
+# Reference: https://m2.material.io/design/color/dark-theme.html
+# =============================================================================
+THEME = {
+    # Backgrounds
+    "background": "#121212",        # 0dp elevation
+    "surface_1dp": "#1e1e1e",       # 5% white overlay
+    "surface_4dp": "#272727",       # 9% white overlay
+    "surface_8dp": "#2d2d2d",       # 12% white overlay
+    "surface_16dp": "#353535",      # 15% white overlay
+    
+    # Brand colors (desaturated for dark theme)
+    "primary": "#BB86FC",           # Purple 200
+    "primary_variant": "#3700B3",   # Purple 700
+    "secondary": "#03DAC6",         # Teal 200
+    "error": "#CF6679",             # Desaturated red
+    
+    # Text emphasis levels
+    "text_high": "rgba(255,255,255,0.87)",     # 87% - High emphasis
+    "text_medium": "rgba(255,255,255,0.60)",   # 60% - Medium emphasis
+    "text_disabled": "rgba(255,255,255,0.38)", # 38% - Disabled
+}
+
+# Mobile-first CSS with Material Design colors
+st.markdown(f"""
 <style>
 /* Compact header */
-.compact-header h1 {
+.compact-header h1 {{
     font-size: 1.5rem !important;
     margin: 0 0 0.25rem 0 !important;
     font-weight: 700;
-    color: rgba(255,255,255,0.87);
-}
-.compact-header p {
-    color: rgba(255,255,255,0.60);
+    color: {THEME["text_high"]};
+}}
+.compact-header p {{
+    color: {THEME["text_medium"]};
     font-size: 0.875rem;
     margin: 0;
-}
+}}
 
 /* Column spacing */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
     padding: 0 0.25rem;
-}
+}}
 
 /* Smooth transitions */
-iframe {
+iframe {{
     transition: opacity 0.3s ease;
-}
+}}
 
 /* Hide sidebar */
-section[data-testid="stSidebar"] {
+section[data-testid="stSidebar"] {{
     display: none;
-}
+}}
+
+/* Sticky era navigation wrapper */
+.era-nav-wrapper {{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: {THEME["surface_8dp"]};
+    padding: 0.75rem 1rem;
+    z-index: 1000;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.4);
+    display: none;  /* Hidden on desktop */
+}}
 
 /* Tighter spacing on mobile */
-@media (max-width: 768px) {
-    .block-container {
-        padding: 1rem 0.75rem !important;
-    }
-    h2 {
+@media (max-width: 768px) {{
+    .block-container {{
+        padding: 1rem 0.75rem 100px 0.75rem !important;
+    }}
+    h2 {{
         font-size: 1.1rem !important;
-    }
-    h3 {
+    }}
+    h3 {{
         font-size: 1rem !important;
-    }
-}
+    }}
+    /* Show sticky nav on mobile */
+    .era-nav-wrapper {{
+        display: block;
+    }}
+    /* Hide desktop era selector (antd segmented control) on mobile */
+    .desktop-era-selector,
+    iframe[title="streamlit_antd_components.utils.component_func.sac"] {{
+        display: none !important;
+    }}
+}}
 
 /* Antd segmented control dark theme styling */
-.ant-segmented {
-    background: #1e1e1e !important;
-}
-.ant-segmented-item {
-    color: rgba(255,255,255,0.60) !important;
-}
-.ant-segmented-item-selected {
-    background: #f87171 !important;
-    color: white !important;
-}
+.ant-segmented {{
+    background: {THEME["surface_4dp"]} !important;
+    border-radius: 8px !important;
+}}
+.ant-segmented-item {{
+    color: {THEME["text_medium"]} !important;
+}}
+.ant-segmented-item-selected {{
+    background: {THEME["primary"]} !important;
+    color: #000000 !important;
+}}
+.ant-segmented-item:hover:not(.ant-segmented-item-selected) {{
+    color: {THEME["text_high"]} !important;
+}}
+
+/* Dividers */
+hr {{
+    border-color: {THEME["surface_8dp"]} !important;
+    opacity: 0.5;
+}}
+
+/* Caption text */
+.stCaption {{
+    color: {THEME["text_medium"]} !important;
+}}
+
+/* Mobile sticky era navigation */
+.mobile-era-nav {{
+    display: none;
+}}
+@media (max-width: 768px) {{
+    .mobile-era-nav {{
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: {THEME["surface_8dp"]};
+        padding: 0.5rem;
+        gap: 0.25rem;
+        z-index: 1000;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+    }}
+    .mobile-era-btn {{
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.25rem;
+        border-radius: 6px;
+        text-decoration: none;
+        background: {THEME["surface_4dp"]};
+        color: {THEME["text_medium"]};
+        transition: all 0.2s ease;
+    }}
+    .mobile-era-btn:hover {{
+        background: {THEME["surface_16dp"]};
+        color: {THEME["text_high"]};
+    }}
+    .mobile-era-btn.selected {{
+        color: #000 !important;
+    }}
+    .mobile-era-btn .era-name {{
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-align: center;
+        line-height: 1.2;
+    }}
+    .mobile-era-btn .era-years {{
+        font-size: 0.6rem;
+        opacity: 0.8;
+        margin-top: 2px;
+    }}
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -84,7 +196,7 @@ section[data-testid="stSidebar"] {
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 
-# Era definitions - the narrative structure
+# Era definitions - the narrative structure (colors from Material palette)
 ERAS = {
     "Pre-WTO (1995-2001)": {
         "start": 1995,
@@ -92,7 +204,7 @@ ERAS = {
         "title": "The Baseline",
         "description": "Before China joined WTO. Manufacturing distributed across Japan, Taiwan, and early Chinese SEZs.",
         "key_event": "China WTO accession Dec 2001",
-        "color": "#6b7280"
+        "color": "#90A4AE"  # Blue Grey 300
     },
     "WTO Boom (2001-2008)": {
         "start": 2001,
@@ -100,7 +212,7 @@ ERAS = {
         "title": "Rapid Rise",
         "description": "China's share explodes as manufacturing shifts en masse to take advantage of WTO access.",
         "key_event": "Financial Crisis 2008",
-        "color": "#dc2626"
+        "color": "#CF6679"  # Error/Red (Material dark)
     },
     "Post-Crisis (2009-2017)": {
         "start": 2009,
@@ -108,7 +220,7 @@ ERAS = {
         "title": "Maturation",
         "description": "China peaks at 21%+. Supply chains deeply integrated. Early nearshoring discussions begin.",
         "key_event": "Trump tariffs announced 2018",
-        "color": "#f59e0b"
+        "color": "#FFB74D"  # Amber 300
     },
     "Trade War Era (2018-Present)": {
         "start": 2018,
@@ -116,25 +228,26 @@ ERAS = {
         "title": "The Shift Begins",
         "description": "China share declines to 13%. Mexico surpasses China. Vietnam and India emerge as alternatives.",
         "key_event": "Mexico becomes #1 import source 2023",
-        "color": "#10b981"
+        "color": "#03DAC6"  # Secondary/Teal 200
     }
 }
 
 # Key countries for comparison
 FOCUS_COUNTRIES = ["China", "Mexico", "Canada", "Vietnam", "Japan", "Germany", "South Korea", "Taiwan", "India", "Ireland"]
 
-# Hardcoded colors for each country
+# Country colors using Material Design 300-level variants (optimized for dark backgrounds)
+# Reference: https://m2.material.io/design/color/the-color-system.html
 COUNTRY_COLORS = {
-    "China": "#dc2626",      # Red (prominent)
-    "Mexico": "#2563eb",     # Blue
-    "Canada": "#16a34a",     # Green
-    "Vietnam": "#9333ea",    # Purple
-    "Japan": "#ea580c",      # Orange
-    "Germany": "#0891b2",    # Cyan
-    "South Korea": "#4f46e5",# Indigo
-    "Taiwan": "#be185d",     # Pink
-    "India": "#ca8a04",      # Yellow
-    "Ireland": "#65a30d",    # Lime
+    "China": "#CF6679",      # Error color - prominent, the story's focus
+    "Mexico": "#03DAC6",     # Secondary/Teal 200 - rising star
+    "Vietnam": "#BB86FC",    # Primary/Purple 200
+    "India": "#FFB74D",      # Amber 300 - warm accent
+    "Canada": "#81C784",     # Green 300 - stable partner
+    "Japan": "#64B5F6",      # Blue 300 - historical
+    "Germany": "#4FC3F7",    # Light Blue 300 - European
+    "South Korea": "#7986CB",# Indigo 300 - tech
+    "Taiwan": "#F06292",     # Pink 300 - tech
+    "Ireland": "#AED581",    # Light Green 300 - pharma
 }
 
 
@@ -332,7 +445,7 @@ def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int 
     
     comparison["share_change"] = comparison["share_pct_end"] - comparison["share_pct_start"]
     
-    # Winners chart
+    # Winners chart (using Material secondary/teal for gains)
     winners = comparison.nlargest(top_n, "share_change")
     winners_opts = {
         "title": {"text": "Gained Share", "left": "center", "textStyle": {"fontSize": 14}},
@@ -347,7 +460,7 @@ def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int 
         "series": [{
             "type": "bar",
             "data": winners["share_change"].round(1).tolist()[::-1],
-            "itemStyle": {"color": "#10b981"},
+            "itemStyle": {"color": THEME["secondary"]},  # Teal 200
             "label": {
                 "show": True,
                 "position": "right",
@@ -359,7 +472,7 @@ def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int 
         "animationDuration": 800
     }
     
-    # Losers chart
+    # Losers chart (using Material error/red for losses)
     losers = comparison.nsmallest(top_n, "share_change")
     losers_opts = {
         "title": {"text": "Lost Share", "left": "center", "textStyle": {"fontSize": 14}},
@@ -374,7 +487,7 @@ def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int 
         "series": [{
             "type": "bar",
             "data": losers["share_change"].round(1).tolist()[::-1],
-            "itemStyle": {"color": "#dc2626"},
+            "itemStyle": {"color": THEME["error"]},  # Desaturated red
             "label": {
                 "show": True,
                 "position": "left",
@@ -427,7 +540,7 @@ def create_era_comparison_echart(df: pd.DataFrame) -> dict:
                 "name": "Era Start",
                 "type": "bar",
                 "data": df_eras["start"].tolist(),
-                "itemStyle": {"color": "#94a3b8"},
+                "itemStyle": {"color": THEME["text_disabled"]},  # Subtle grey
                 "label": {"show": True, "position": "top", "formatter": "{c}%", "fontSize": 10}
             },
             {
@@ -473,26 +586,37 @@ def main():
     era_items = []
     label_to_key = {}
     for era_key in era_keys:
-        era_info = ERAS[era_key]
         name_parts = era_key.split("(")
         era_name = name_parts[0].strip()
         era_items.append(sac.SegmentedItem(label=era_name))
         label_to_key[era_name] = era_key
     
+    # Get era from query params or default to Trade War Era
+    query_era = st.query_params.get("era", None)
+    if query_era and query_era in era_keys:
+        default_index = era_keys.index(query_era)
+    else:
+        default_index = 3  # Default to Trade War Era
+    
+    # Desktop era selector (hidden on mobile via CSS)
+    st.markdown('<div class="desktop-era-selector">', unsafe_allow_html=True)
     selected_label = sac.segmented(
         items=era_items,
-        index=3,  # Default to Trade War Era
+        index=default_index,
         align="center",
         size="sm",
         radius="md",
-        color="red",
+        color="violet",  # Material purple
         bg_color="transparent",
         divider=False,
         use_container_width=True,
+        key="desktop_era"
     )
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    # Map label back to full era key
-    selected_era = label_to_key.get(selected_label, era_keys[3])
+    # Map label back to full era key and update URL
+    selected_era = label_to_key.get(selected_label, era_keys[default_index])
+    st.query_params["era"] = selected_era
     era_config = ERAS[selected_era]
     
     # Era context - compact inline description
@@ -617,6 +741,30 @@ def main():
         "Values adjusted for inflation (2020 base year) | "
         "Analysis covers US imports by country of origin"
     )
+    
+    # Mobile sticky era navigation (fixed to bottom)
+    # Build navigation links for mobile
+    mobile_nav_items = []
+    for era_key in era_keys:
+        name_parts = era_key.split("(")
+        era_name = name_parts[0].strip()
+        years = name_parts[1].replace(")", "") if len(name_parts) > 1 else ""
+        is_selected = era_key == selected_era
+        selected_class = "selected" if is_selected else ""
+        era_color = ERAS[era_key]["color"]
+        encoded_era = quote(era_key)  # URL-encode the era key
+        inline_style = f"background:{era_color}; color: #000;" if is_selected else ""
+        
+        mobile_nav_items.append(
+            f'<a href="?era={encoded_era}" target="_self" class="mobile-era-btn {selected_class}" style="{inline_style}">'
+            f'<span class="era-name">{era_name}</span>'
+            f'<span class="era-years">{years}</span>'
+            f'</a>'
+        )
+    
+    # Render mobile nav HTML (CSS is in the main style block above)
+    mobile_nav_html = '<div class="mobile-era-nav">' + ''.join(mobile_nav_items) + '</div>'
+    st.markdown(mobile_nav_html, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

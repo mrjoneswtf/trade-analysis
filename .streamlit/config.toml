@@ -1,8 +1,8 @@
 [theme]
-primaryColor = "#f87171"
-backgroundColor = "#121212"
-secondaryBackgroundColor = "#1e1e1e"
-textColor = "#e0e0e0"
+primaryColor = "#BB86FC"              # Material Purple 200 (primary for dark theme)
+backgroundColor = "#121212"           # Material dark baseline
+secondaryBackgroundColor = "#1e1e1e"  # 1dp elevation surface (5% white overlay)
+textColor = "#e0e0e0"                 # ~87% white (high emphasis)
 font = "sans serif"
 
 [client]
