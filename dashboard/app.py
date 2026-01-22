@@ -623,7 +623,7 @@ def main():
         bg_style = f"background-color: {era_info['color']};" if is_selected else ""
         
         era_buttons_html.append(
-            f'<a href="?era={era_key}" class="era-btn {selected_class}" style="{bg_style}">'
+            f'<a href="?era={era_key}" target="_self" class="era-btn {selected_class}" style="{bg_style}">'
             f'<span class="name">{era_name}</span>'
             f'<span class="years">{era_years}</span>'
             f'</a>'
