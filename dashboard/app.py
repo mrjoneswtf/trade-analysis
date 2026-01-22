@@ -109,8 +109,8 @@ def get_era_metrics(df: pd.DataFrame, era_config: dict) -> dict:
     }
 
 
-def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
-    """Create the main China trajectory chart with era shading."""
+def create_china_arc_chart(df: pd.DataFrame, selected_era: str, compare_countries: list = None) -> go.Figure:
+    """Create the main China trajectory chart with era shading and comparison countries."""
     imports = df[df["trade_type"] == "import"]
     china_data = imports[imports["country"] == "China"].sort_values("year")
     
@@ -130,7 +130,23 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
             annotation_font_size=12
         )
     
-    # Add China line
+    # Add comparison countries first (so they appear behind China)
+    if compare_countries:
+        for country in compare_countries:
+            if country != "China":
+                country_data = imports[imports["country"] == country].sort_values("year")
+                if len(country_data) > 0:
+                    fig.add_trace(go.Scatter(
+                        x=country_data["year"],
+                        y=country_data["share_pct"],
+                        mode="lines",
+                        name=country,
+                        line=dict(width=1.5),
+                        opacity=0.5,
+                        hovertemplate=f"<b>{country}</b><br>%{{x}}: %{{y:.1f}}%<extra></extra>"
+                    ))
+    
+    # Add China line last (on top, prominent)
     fig.add_trace(go.Scatter(
         x=china_data["year"],
         y=china_data["share_pct"],
@@ -138,7 +154,7 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
         name="China",
         line=dict(color="#dc2626", width=3),
         marker=dict(size=6),
-        hovertemplate="<b>%{x}</b><br>Share: %{y:.1f}%<extra></extra>"
+        hovertemplate="<b>China</b><br>%{x}: %{y:.1f}%<extra></extra>"
     ))
     
     # Add key event markers
@@ -163,12 +179,22 @@ def create_china_arc_chart(df: pd.DataFrame, selected_era: str) -> go.Figure:
             font=dict(size=10)
         )
     
+    # Show legend only if there are comparison countries
+    show_legend = compare_countries and len([c for c in compare_countries if c != "China"]) > 0
+    
     fig.update_layout(
         title="China's Import Share: The Rise and Shift",
         xaxis_title="Year",
         yaxis_title="Share of US Imports (%)",
         hovermode="x unified",
-        showlegend=False,
+        showlegend=show_legend,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
         height=400,
         margin=dict(t=60, b=40)
     )
@@ -434,9 +460,9 @@ def main():
     
     st.markdown("---")
     
-    # Main China Arc Chart
+    # Main China Arc Chart (with comparison countries)
     st.subheader("The Full Arc")
-    fig_arc = create_china_arc_chart(df, selected_era)
+    fig_arc = create_china_arc_chart(df, selected_era, compare_countries)
     st.plotly_chart(fig_arc, use_container_width=True)
     
     # Era Deep Dive
@@ -496,41 +522,6 @@ def main():
                         f"{end:.1f}%",
                         f"+{growth:.0f}% growth"
                     )
-    
-    # Country Comparison
-    if compare_countries:
-        st.markdown("---")
-        st.subheader("Country Comparison")
-        
-        imports = df[df["trade_type"] == "import"]
-        compare_data = imports[imports["country"].isin(compare_countries)]
-        
-        fig = px.line(
-            compare_data,
-            x="year",
-            y="share_pct",
-            color="country",
-            title="Import Share Comparison",
-            markers=True
-        )
-        
-        # Add era shading for selected era
-        fig.add_vrect(
-            x0=era_config["start"], x1=era_config["end"],
-            fillcolor=era_config["color"],
-            opacity=0.15,
-            layer="below",
-            line_width=0
-        )
-        
-        fig.update_layout(
-            xaxis_title="Year",
-            yaxis_title="Share of US Imports (%)",
-            hovermode="x unified",
-            height=400
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
     
     # Data Explorer (collapsed)
     with st.expander("📊 Data Explorer"):
