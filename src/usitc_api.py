@@ -301,6 +301,52 @@ class USITCDataWebAPI:
             end_year=end_year,
             time_period="Annual",
         )
+    
+    def get_monthly_imports(
+        self,
+        start_year: int = 2024,
+        end_year: int = 2025,
+    ) -> pd.DataFrame:
+        """
+        Get monthly import data by country for recent years.
+        
+        Use this for capturing 2025 YTD data and granular Trade War analysis.
+        
+        Args:
+            start_year: Start year (default 2024)
+            end_year: End year (default 2025)
+        
+        Returns:
+            DataFrame with monthly trade data. Columns will include month identifiers.
+        """
+        return self.run_trade_query(
+            trade_type="Import",
+            start_year=start_year,
+            end_year=end_year,
+            time_period="Monthly",
+        )
+    
+    def get_monthly_exports(
+        self,
+        start_year: int = 2024,
+        end_year: int = 2025,
+    ) -> pd.DataFrame:
+        """
+        Get monthly export data by country for recent years.
+        
+        Args:
+            start_year: Start year (default 2024)
+            end_year: End year (default 2025)
+        
+        Returns:
+            DataFrame with monthly trade data.
+        """
+        return self.run_trade_query(
+            trade_type="TotExp",
+            start_year=start_year,
+            end_year=end_year,
+            time_period="Monthly",
+        )
 
 
 def fetch_and_save_trade_data(
@@ -356,6 +402,65 @@ def fetch_and_save_trade_data(
             print("  No export data returned")
     except Exception as e:
         print(f"  Failed to fetch exports: {e}")
+    
+    return saved_files
+
+
+def fetch_monthly_trade_data(
+    output_dir: Optional[Path] = None,
+    start_year: int = 2024,
+    end_year: int = 2025,
+    token: Optional[str] = None,
+) -> dict:
+    """
+    Fetch monthly imports and exports data and save to CSV files.
+    
+    Use this for recent data (2024-2025) to capture YTD information.
+    
+    Args:
+        output_dir: Directory to save files (defaults to data/raw/usitc)
+        start_year: Start year (default 2024)
+        end_year: End year (default 2025)
+        token: API token (optional, will load from file)
+    
+    Returns:
+        Dict with paths to saved files
+    """
+    if output_dir is None:
+        output_dir = Path(__file__).parent.parent / "data" / "raw" / "usitc"
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    api = USITCDataWebAPI(token=token)
+    saved_files = {}
+    
+    # Fetch monthly imports
+    print(f"\nFetching monthly imports data ({start_year}-{end_year})...")
+    try:
+        imports_df = api.get_monthly_imports(start_year, end_year)
+        if len(imports_df) > 0:
+            imports_path = output_dir / f"imports_monthly_{start_year}_{end_year}.csv"
+            imports_df.to_csv(imports_path, index=False)
+            saved_files["imports_monthly"] = imports_path
+            print(f"  Saved: {imports_path} ({len(imports_df)} rows)")
+        else:
+            print("  No monthly import data returned")
+    except Exception as e:
+        print(f"  Failed to fetch monthly imports: {e}")
+    
+    # Fetch monthly exports
+    print(f"\nFetching monthly exports data ({start_year}-{end_year})...")
+    try:
+        exports_df = api.get_monthly_exports(start_year, end_year)
+        if len(exports_df) > 0:
+            exports_path = output_dir / f"exports_monthly_{start_year}_{end_year}.csv"
+            exports_df.to_csv(exports_path, index=False)
+            saved_files["exports_monthly"] = exports_path
+            print(f"  Saved: {exports_path} ({len(exports_df)} rows)")
+        else:
+            print("  No monthly export data returned")
+    except Exception as e:
+        print(f"  Failed to fetch monthly exports: {e}")
     
     return saved_files
 

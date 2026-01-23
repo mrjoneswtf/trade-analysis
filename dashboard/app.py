@@ -1,7 +1,7 @@
 """
 US Trade Data Analysis Dashboard - The China Story Arc
 
-Narrative-driven Streamlit dashboard exploring how America's supply chain
+Scrollytelling narrative exploring how America's supply chain
 shifted from China to Mexico, Vietnam, and other emerging partners.
 
 Run with: streamlit run dashboard/app.py
@@ -11,14 +11,13 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 from streamlit_echarts import st_echarts
-import streamlit_antd_components as sac
 import streamlit_shadcn_ui as ui
 
 # Page config
 st.set_page_config(
     page_title="The China Story Arc",
     page_icon="🌏",
-    layout="wide",
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
@@ -28,48 +27,90 @@ st.set_page_config(
 # =============================================================================
 THEME = {
     # Backgrounds
-    "background": "#121212",        # 0dp elevation
-    "surface_1dp": "#1e1e1e",       # 5% white overlay
-    "surface_4dp": "#272727",       # 9% white overlay
-    "surface_8dp": "#2d2d2d",       # 12% white overlay
-    "surface_16dp": "#353535",      # 15% white overlay
+    "background": "#121212",
+    "surface_1dp": "#1e1e1e",
+    "surface_4dp": "#272727",
+    "surface_8dp": "#2d2d2d",
+    "surface_16dp": "#353535",
     
-    # Brand colors (desaturated for dark theme)
-    "primary": "#BB86FC",           # Purple 200
-    "primary_variant": "#3700B3",   # Purple 700
-    "secondary": "#03DAC6",         # Teal 200
-    "error": "#CF6679",             # Desaturated red
+    # Brand colors
+    "primary": "#BB86FC",
+    "primary_variant": "#3700B3",
+    "secondary": "#03DAC6",
+    "error": "#CF6679",
     
-    # Text emphasis levels
-    "text_high": "rgba(255,255,255,0.87)",     # 87% - High emphasis
-    "text_medium": "rgba(255,255,255,0.60)",   # 60% - Medium emphasis
-    "text_disabled": "rgba(255,255,255,0.38)", # 38% - Disabled
+    # Text emphasis
+    "text_high": "rgba(255,255,255,0.87)",
+    "text_medium": "rgba(255,255,255,0.60)",
+    "text_disabled": "rgba(255,255,255,0.38)",
 }
 
-# Mobile-first CSS with Material Design colors
+# =============================================================================
+# CSS - Editorial layout with 800px max-width
+# =============================================================================
 st.markdown(f"""
 <style>
+/* Editorial max-width container */
+.block-container {{
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    padding: 2rem 1rem !important;
+}}
+
 /* Compact header */
 .compact-header h1 {{
-    font-size: 1.5rem !important;
+    font-size: 2rem !important;
     margin: 0 0 0.25rem 0 !important;
     font-weight: 700;
     color: {THEME["text_high"]};
 }}
 .compact-header p {{
     color: {THEME["text_medium"]};
-    font-size: 0.875rem;
-    margin: 0;
+    font-size: 1rem;
+    margin: 0 0 1.5rem 0;
 }}
 
-/* Column spacing */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {{
-    padding: 0 0.25rem;
+/* Era Sections */
+.era-section {{
+    padding: 2.5rem 0;
+    border-bottom: 1px solid {THEME["surface_8dp"]};
 }}
-
-/* Smooth transitions */
-iframe {{
-    transition: opacity 0.3s ease;
+.era-title {{
+    font-size: 1.5rem;
+    color: {THEME["text_high"]};
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}}
+.era-hook {{
+    font-size: 1.2rem;
+    font-style: italic;
+    color: {THEME["primary"]};
+    margin-bottom: 1.25rem;
+    line-height: 1.4;
+}}
+.era-context {{
+    color: {THEME["text_medium"]};
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}}
+.era-takeaway {{
+    font-weight: 500;
+    color: {THEME["text_high"]};
+    border-left: 3px solid {THEME["primary"]};
+    padding-left: 1rem;
+    margin-top: 1.5rem;
+    line-height: 1.5;
+}}
+.key-event {{
+    background: {THEME["surface_4dp"]};
+    padding: 0.875rem 1rem;
+    border-radius: 8px;
+    margin: 1.25rem 0;
+    font-size: 0.95rem;
+}}
+.key-event strong {{
+    color: {THEME["secondary"]};
 }}
 
 /* Hide sidebar */
@@ -77,129 +118,207 @@ section[data-testid="stSidebar"] {{
     display: none;
 }}
 
-/* Tighter spacing on mobile */
-@media (max-width: 768px) {{
-    .block-container {{
-        padding: 1rem 0.75rem 80px 0.75rem !important;
-    }}
-    h2 {{
-        font-size: 1.1rem !important;
-    }}
-    h3 {{
-        font-size: 1rem !important;
-    }}
-    /* Make segmented control sticky at bottom on mobile */
-    iframe[title="streamlit_antd_components.utils.component_func.sac"] {{
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        width: 100vw !important;
-        height: 60px !important;
-        z-index: 1000 !important;
-        background: {THEME["surface_8dp"]} !important;
-        padding: 10px 8px !important;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.5) !important;
-        border-top: 1px solid {THEME["surface_16dp"]} !important;
-    }}
-}}
-
-/* Antd segmented control dark theme styling */
-.ant-segmented {{
-    background: {THEME["surface_4dp"]} !important;
-    border-radius: 8px !important;
-}}
-.ant-segmented-item {{
-    color: {THEME["text_medium"]} !important;
-}}
-.ant-segmented-item-selected {{
-    background: {THEME["primary"]} !important;
-    color: #000000 !important;
-}}
-.ant-segmented-item:hover:not(.ant-segmented-item-selected) {{
-    color: {THEME["text_high"]} !important;
-}}
-
 /* Dividers */
 hr {{
     border-color: {THEME["surface_8dp"]} !important;
-    opacity: 0.5;
+    margin: 0 !important;
 }}
 
 /* Caption text */
 .stCaption {{
     color: {THEME["text_medium"]} !important;
 }}
+
+/* Smooth transitions */
+iframe {{
+    transition: opacity 0.3s ease;
+}}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {{
+    .block-container {{
+        padding: 1rem 0.75rem !important;
+    }}
+    .compact-header h1 {{
+        font-size: 1.5rem !important;
+    }}
+    .compact-header p {{
+        font-size: 0.875rem;
+    }}
+    .era-title {{
+        font-size: 1.25rem;
+    }}
+    .era-hook {{
+        font-size: 1.05rem;
+    }}
+    .era-section {{
+        padding: 1.5rem 0;
+    }}
+}}
+
+/* Era metrics grid - responsive 2x3 (mobile) to 3x2 (desktop) */
+.era-metrics-grid {{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}}
+
+/* Desktop: 3 columns with reordering */
+@media (min-width: 769px) {{
+    .era-metrics-grid {{
+        grid-template-columns: repeat(3, 1fr);
+    }}
+    /* Reorder: 1,2,5 on row 1; 3,4,6 on row 2 */
+    .era-metrics-grid > .metric-cell:nth-child(1) {{ order: 1; }}
+    .era-metrics-grid > .metric-cell:nth-child(2) {{ order: 2; }}
+    .era-metrics-grid > .metric-cell:nth-child(3) {{ order: 4; }}
+    .era-metrics-grid > .metric-cell:nth-child(4) {{ order: 5; }}
+    .era-metrics-grid > .metric-cell:nth-child(5) {{ order: 3; }}
+    .era-metrics-grid > .metric-cell:nth-child(6) {{ order: 6; }}
+}}
+
+/* Metric cell styling */
+.metric-cell {{
+    background: {THEME["surface_4dp"]};
+    border-radius: 8px;
+    padding: 0.875rem 1rem;
+}}
+.metric-cell .label {{
+    font-size: 0.75rem;
+    color: {THEME["text_medium"]};
+    margin-bottom: 0.25rem;
+}}
+.metric-cell .value {{
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: {THEME["text_high"]};
+}}
 </style>
 """, unsafe_allow_html=True)
 
-# Paths
+# =============================================================================
+# DATA PATHS
+# =============================================================================
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 
-# Era definitions - the narrative structure (colors from Material palette)
+# =============================================================================
+# ERA DEFINITIONS
+# =============================================================================
 ERAS = {
-    "Pre-WTO (1995-2001)": {
+    "pre-wto": {
         "start": 1995,
         "end": 2001,
-        "title": "The Baseline",
-        "description": "Before China joined WTO. Manufacturing distributed across Japan, Taiwan, and early Chinese SEZs.",
-        "key_event": "China WTO accession Dec 2001",
-        "color": "#90A4AE"  # Blue Grey 300
+        "title": "Pre-WTO",
+        "years": "1995-2001",
+        "color": "#90A4AE"
     },
-    "WTO Boom (2001-2008)": {
+    "wto-boom": {
         "start": 2001,
         "end": 2008,
-        "title": "Rapid Rise",
-        "description": "China's share explodes as manufacturing shifts en masse to take advantage of WTO access.",
-        "key_event": "Financial Crisis 2008",
-        "color": "#CF6679"  # Error/Red (Material dark)
+        "title": "WTO Boom",
+        "years": "2001-2008",
+        "color": "#CF6679"
     },
-    "Post-Crisis (2009-2017)": {
+    "post-crisis": {
         "start": 2009,
         "end": 2017,
-        "title": "Maturation",
-        "description": "China peaks at 21%+. Supply chains deeply integrated. Early nearshoring discussions begin.",
-        "key_event": "Trump tariffs announced 2018",
-        "color": "#FFB74D"  # Amber 300
+        "title": "Post-Crisis",
+        "years": "2009-2017",
+        "color": "#FFB74D"
     },
-    "Trade War Era (2018-Present)": {
+    "trade-war": {
         "start": 2018,
-        "end": 2024,
-        "title": "The Shift Begins",
-        "description": "China share declines to 13%. Mexico surpasses China. Vietnam and India emerge as alternatives.",
-        "key_event": "Mexico becomes #1 import source 2023",
-        "color": "#03DAC6"  # Secondary/Teal 200
+        "end": 2025,  # Dynamic - will use latest available year
+        "title": "Trade War",
+        "years": "2018-Present",
+        "color": "#03DAC6"
     }
 }
 
-# Key countries for comparison
-FOCUS_COUNTRIES = ["China", "Mexico", "Canada", "Vietnam", "Japan", "Germany", "South Korea", "Taiwan", "India", "Ireland"]
+# =============================================================================
+# ERA CONTENT - Narrative copy for each era
+# =============================================================================
+ERA_CONTENT = {
+    "pre-wto": {
+        "hook": "Before the flood: When 'Made in China' was just getting started",
+        "context": "In the mid-1990s, Japan and Canada dominated US imports. China was a rising player, but still accounted for less than 7% of goods entering American ports. That was about to change.",
+        "key_event": "Dec 2001: China joins the World Trade Organization",
+        "takeaway": "China doubled its share in six years, setting the stage for an unprecedented manufacturing migration."
+    },
+    "wto-boom": {
+        "hook": "The decade that rewired global manufacturing",
+        "context": "WTO membership gave China permanent normal trade relations with the US. American companies rushed to offshore production. Container ships couldn't be built fast enough.",
+        "key_event": "2007: China becomes the #1 source of US imports",
+        "takeaway": "In seven years, China went from third place to first, capturing more import share than any country in modern history."
+    },
+    "post-crisis": {
+        "hook": "Peak China: The plateau before the storm",
+        "context": "After the 2008 financial crisis, China's rise continued but slowed. By 2015, it held over 21% of US imports. Supply chains were deeply entrenched. Early whispers of \"reshoring\" began.",
+        "key_event": "2015: China hits all-time high of 21.6% import share",
+        "takeaway": "China's dominance seemed unshakeable—but beneath the surface, costs were rising and alternatives were emerging."
+    },
+    "trade-war": {
+        "hook": "The great unwinding accelerates",
+        "context": "Section 301 tariffs began the shift in 2018. COVID-19 exposed fragility. Now, 2025's aggressive tariff expansion is accelerating the exodus from China at unprecedented speed.",
+        "key_events": [
+            "2018: Section 301 tariffs enacted",
+            "2020: COVID exposes supply chain fragility",
+            "2023: Mexico overtakes China as #1",
+            "2025: 'Liberation Day' tariffs reach 145% on some goods"
+        ],
+        "chapter_2": {
+            "title": "Chapter 2: The 2025 Acceleration",
+            "text": "In just 10 months of 2025, China's import share plunged from 13% to under 10%—a drop that previously took years. Taiwan nearly doubled its share (semiconductors), while Vietnam and Mexico consolidated their positions as the go-to alternatives."
+        },
+        "takeaway": "The 'China+1' strategy is now standard practice. What began as tariff policy has become a structural rewiring of global supply chains."
+    }
+}
 
-# Country colors using Material Design 300-level variants (optimized for dark backgrounds)
-# Reference: https://m2.material.io/design/color/the-color-system.html
+# =============================================================================
+# FOCUS COUNTRIES AND COLORS
+# =============================================================================
+HERO_COUNTRIES = ["China", "Mexico", "Canada", "Japan", "Vietnam"]
+
 COUNTRY_COLORS = {
-    "China": "#CF6679",      # Error color - prominent, the story's focus
-    "Mexico": "#03DAC6",     # Secondary/Teal 200 - rising star
-    "Vietnam": "#BB86FC",    # Primary/Purple 200
-    "India": "#FFB74D",      # Amber 300 - warm accent
-    "Canada": "#81C784",     # Green 300 - stable partner
-    "Japan": "#64B5F6",      # Blue 300 - historical
-    "Germany": "#4FC3F7",    # Light Blue 300 - European
-    "South Korea": "#7986CB",# Indigo 300 - tech
-    "Taiwan": "#F06292",     # Pink 300 - tech
-    "Ireland": "#AED581",    # Light Green 300 - pharma
+    "China": "#CF6679",
+    "Mexico": "#03DAC6",
+    "Vietnam": "#BB86FC",
+    "India": "#FFB74D",
+    "Canada": "#81C784",
+    "Japan": "#64B5F6",
+    "Germany": "#4FC3F7",
+    "South Korea": "#7986CB",
+    "Taiwan": "#F06292",
+    "Ireland": "#AED581",
+    "Thailand": "#A1887F",
 }
 
 
+def get_data_file_mtime() -> float:
+    """Get modification time of latest data file for cache busting."""
+    for year in [2025, 2024]:
+        trade_path = DATA_PROCESSED / f"trade_data_1995_{year}.csv"
+        if trade_path.exists():
+            return trade_path.stat().st_mtime
+    return 0.0
+
+
 @st.cache_data
-def load_data() -> pd.DataFrame:
-    """Load processed trade data."""
-    trade_path = DATA_PROCESSED / "trade_data_1995_2024.csv"
+def load_data(_cache_key: float = None) -> pd.DataFrame:
+    """Load processed trade data. Tries 2025 file first, falls back to 2024."""
+    # Try loading the most recent data file
+    for year in [2025, 2024]:
+        trade_path = DATA_PROCESSED / f"trade_data_1995_{year}.csv"
+        if trade_path.exists():
+            df = pd.read_csv(trade_path)
+            return df
     
+    # Fallback: try the old path
+    trade_path = DATA_PROCESSED / "trade_data_1995_2024.csv"
     if trade_path.exists():
-        df = pd.read_csv(trade_path)
-        return df
+        return pd.read_csv(trade_path)
     return None
 
 
@@ -213,149 +332,127 @@ def get_china_share(df: pd.DataFrame, year: int) -> float:
     return 0.0
 
 
-def get_era_metrics(df: pd.DataFrame, era_config: dict) -> dict:
-    """Calculate key metrics for an era."""
+def get_era_metrics(df: pd.DataFrame, era_key: str) -> dict:
+    """Calculate key metrics for an era including top non-China partner."""
+    config = ERAS[era_key]
     imports = df[df["trade_type"] == "import"]
-    era_data = imports[(imports["year"] >= era_config["start"]) & 
-                       (imports["year"] <= era_config["end"])]
     
-    china_start = get_china_share(imports, era_config["start"])
-    china_end = get_china_share(imports, era_config["end"])
+    # Cap era end year at actual data range
+    data_max_year = imports["year"].max()
+    era_end_year = min(config["end"], data_max_year)
+    
+    # China metrics
+    china_start = get_china_share(imports, config["start"])
+    china_end = get_china_share(imports, era_end_year)
     
     # Get top countries at end of era
-    end_year_data = era_data[era_data["year"] == era_config["end"]]
-    top_5 = end_year_data.nlargest(5, "share_pct")[["country", "share_pct"]]
+    end_year_data = imports[imports["year"] == era_end_year]
+    top_4 = end_year_data.nlargest(4, "share_pct")["country"].tolist()
+    top_1 = top_4[0] if top_4 else "N/A"
+    top_234 = "/".join(top_4[1:4]) if len(top_4) > 1 else "N/A"
+    
+    # Find top non-China partner at end of era
+    non_china = end_year_data[end_year_data["country"] != "China"]
+    if len(non_china) > 0:
+        top_partner = non_china.nlargest(1, "share_pct").iloc[0]
+        partner_name = top_partner["country"]
+        partner_end = top_partner["share_pct"]
+        
+        # Get partner's start share
+        partner_start_data = imports[
+            (imports["country"] == partner_name) & 
+            (imports["year"] == config["start"])
+        ]["share_pct"]
+        partner_start = partner_start_data.values[0] if len(partner_start_data) > 0 else 0.0
+    else:
+        partner_name = "N/A"
+        partner_start = 0.0
+        partner_end = 0.0
     
     return {
         "china_start": china_start,
         "china_end": china_end,
         "china_delta": china_end - china_start,
-        "top_5": top_5
+        "partner_name": partner_name,
+        "partner_start": partner_start,
+        "partner_end": partner_end,
+        "partner_delta": partner_end - partner_start,
+        "top_1": top_1,
+        "top_234": top_234
     }
 
 
-def create_china_arc_echart(df: pd.DataFrame, selected_era: str) -> dict:
-    """Create ECharts config for the main China trajectory chart."""
+def create_hero_chart(df: pd.DataFrame) -> dict:
+    """Create ECharts config for the hero chart - static overview."""
     imports = df[df["trade_type"] == "import"]
-    
-    # Get unique years for x-axis
     years = sorted(imports["year"].unique().tolist())
+    data_max_year = max(years)
     
-    # Build mark areas for era shading
+    # Build subtle era shading (cap at actual data range)
     mark_area_data = []
-    for era_name, era_config in ERAS.items():
-        opacity = 0.3 if era_name == selected_era else 0.1
+    for era_key, config in ERAS.items():
+        era_end = min(config["end"], data_max_year)
         mark_area_data.append([
             {
-                "name": era_config["title"] if era_name == selected_era else "",
-                "xAxis": str(era_config["start"]),
-                "itemStyle": {"color": era_config["color"], "opacity": opacity}
+                "xAxis": str(config["start"]),
+                "itemStyle": {"color": config["color"], "opacity": 0.08}
             },
-            {"xAxis": str(era_config["end"])}
+            {"xAxis": str(era_end)}
         ])
     
-    # Build mark points for key events on China's line
-    events = [
-        (2001, "WTO Entry"),
-        (2008, "Financial Crisis"),
-        (2018, "Trade War"),
-        (2020, "COVID-19"),
-        (2023, "Mexico #1")
-    ]
-    mark_points = []
-    china_data = imports[imports["country"] == "China"].sort_values("year")
-    for year, label in events:
-        share_row = china_data[china_data["year"] == year]
-        if len(share_row) > 0:
-            share = share_row["share_pct"].values[0]
-            mark_points.append({
-                "name": label,
-                "coord": [str(year), round(share, 1)],
-                "value": label,
-                "symbol": "pin",
-                "symbolSize": 40,
-                "label": {
-                    "show": True,
-                    "position": "top",
-                    "formatter": label,
-                    "fontSize": 10
-                }
-            })
-    
-    # Build series for each country
+    # Build series for top 5 countries
     series = []
-    
-    # Add other countries first (behind China)
-    for country in FOCUS_COUNTRIES:
-        if country != "China":
-            country_data = imports[imports["country"] == country].sort_values("year")
-            if len(country_data) > 0:
-                # Create data aligned to years
-                data_dict = dict(zip(country_data["year"].astype(str), country_data["share_pct"].round(1)))
-                data = [data_dict.get(str(y), None) for y in years]
-                
-                color = COUNTRY_COLORS.get(country, "#6b7280")
-                series.append({
-                    "name": country,
-                    "type": "line",
-                    "data": data,
-                    "smooth": True,
-                    "symbol": "none",
-                    "lineStyle": {"width": 1.5, "color": color, "opacity": 0.6},
-                    "itemStyle": {"color": color},
-                    "emphasis": {"focus": "series", "lineStyle": {"width": 3, "opacity": 1}},
-                    "z": 1,
-                })
-    
-    # Add China line last (on top, prominent)
-    china_data_dict = dict(zip(china_data["year"].astype(str), china_data["share_pct"].round(1)))
-    china_values = [china_data_dict.get(str(y), None) for y in years]
-    
-    series.append({
-        "name": "China",
-        "type": "line",
-        "data": china_values,
-        "smooth": True,
-        "symbol": "circle",
-        "symbolSize": 6,
-        "lineStyle": {"width": 3, "color": COUNTRY_COLORS["China"]},
-        "itemStyle": {"color": COUNTRY_COLORS["China"]},
-        "emphasis": {"focus": "series", "lineStyle": {"width": 4}},
-        "z": 10,
-        "markArea": {"silent": True, "data": mark_area_data},
-        "markPoint": {"data": mark_points, "symbolSize": 35}
-    })
+    for country in HERO_COUNTRIES:
+        country_data = imports[imports["country"] == country].sort_values("year")
+        if len(country_data) > 0:
+            data_dict = dict(zip(country_data["year"].astype(str), country_data["share_pct"].round(1)))
+            data = [data_dict.get(str(y), None) for y in years]
+            
+            color = COUNTRY_COLORS.get(country, "#6b7280")
+            is_china = country == "China"
+            
+            series_config = {
+                "name": country,
+                "type": "line",
+                "data": data,
+                "smooth": True,
+                "symbol": "circle" if is_china else "none",
+                "symbolSize": 4 if is_china else 0,
+                "lineStyle": {
+                    "width": 3 if is_china else 2,
+                    "color": color,
+                    "opacity": 1 if is_china else 0.7
+                },
+                "itemStyle": {"color": color},
+                "z": 10 if is_china else 1,
+            }
+            
+            # Add era shading to China's line
+            if is_china:
+                series_config["markArea"] = {"silent": True, "data": mark_area_data}
+            
+            series.append(series_config)
     
     return {
-        "title": {
-            "text": "China's Import Share: The Rise and Shift",
-            "left": "center",
-            "textStyle": {"fontSize": 16, "fontWeight": "bold"}
-        },
         "tooltip": {
             "trigger": "axis",
-            "axisPointer": {"type": "cross"},
-            "formatter": None  # Use default formatter
+            "axisPointer": {"type": "cross"}
         },
         "legend": {
-            "data": FOCUS_COUNTRIES,
+            "data": HERO_COUNTRIES,
             "bottom": 0,
-            "type": "scroll",
             "textStyle": {"fontSize": 11}
         },
         "grid": {
             "left": "3%",
             "right": "4%",
-            "bottom": "15%",
-            "top": "15%",
+            "bottom": "12%",
+            "top": "5%",
             "containLabel": True
         },
         "xAxis": {
             "type": "category",
             "data": [str(y) for y in years],
-            "name": "Year",
-            "nameLocation": "middle",
-            "nameGap": 30,
             "boundaryGap": False
         },
         "yAxis": {
@@ -373,53 +470,143 @@ def create_china_arc_echart(df: pd.DataFrame, selected_era: str) -> dict:
     }
 
 
-def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int = 10) -> tuple:
-    """Create ECharts horizontal bar charts for winners and losers."""
+def create_chapter2_chart(df: pd.DataFrame) -> dict:
+    """Create focused 2018-2025 chart for Chapter 2 section."""
     imports = df[df["trade_type"] == "import"]
     
-    start_data = imports[imports["year"] == era_config["start"]][["country", "share_pct"]]
-    end_data = imports[imports["year"] == era_config["end"]][["country", "share_pct"]]
+    # Filter to Trade War era (2018+)
+    trade_war_imports = imports[imports["year"] >= 2018]
+    years = sorted(trade_war_imports["year"].unique().tolist())
+    max_year = max(years)
+    
+    # Key Trade War players
+    chapter2_countries = ["China", "Mexico", "Vietnam", "Taiwan"]
+    
+    # Build series
+    series = []
+    for country in chapter2_countries:
+        country_data = trade_war_imports[trade_war_imports["country"] == country].sort_values("year")
+        if len(country_data) > 0:
+            data_dict = dict(zip(country_data["year"].astype(str), country_data["share_pct"].round(1)))
+            data = [data_dict.get(str(y), None) for y in years]
+            
+            color = COUNTRY_COLORS.get(country, "#6b7280")
+            is_china = country == "China"
+            
+            series.append({
+                "name": country,
+                "type": "line",
+                "data": data,
+                "smooth": True,
+                "symbol": "circle",
+                "symbolSize": 6 if is_china else 4,
+                "lineStyle": {
+                    "width": 3 if is_china else 2,
+                    "color": color,
+                    "opacity": 1 if is_china else 0.8
+                },
+                "itemStyle": {"color": color},
+                "z": 10 if is_china else 1,
+            })
+    
+    # X-axis labels with YTD marker for latest year
+    x_labels = []
+    for y in years:
+        if y == max_year:
+            x_labels.append(f"{y}*")  # Mark YTD
+        else:
+            x_labels.append(str(y))
+    
+    return {
+        "tooltip": {
+            "trigger": "axis",
+            "backgroundColor": THEME["surface_8dp"],
+            "borderColor": THEME["surface_16dp"],
+            "textStyle": {"color": THEME["text_high"]}
+        },
+        "legend": {
+            "data": chapter2_countries,
+            "bottom": 0,
+            "textStyle": {"fontSize": 10, "color": THEME["text_medium"]}
+        },
+        "grid": {
+            "left": "8%",
+            "right": "5%",
+            "bottom": "18%",
+            "top": "8%",
+            "containLabel": True
+        },
+        "xAxis": {
+            "type": "category",
+            "data": x_labels,
+            "boundaryGap": False,
+            "axisLabel": {"fontSize": 10, "color": THEME["text_medium"]},
+            "axisLine": {"lineStyle": {"color": THEME["surface_16dp"]}}
+        },
+        "yAxis": {
+            "type": "value",
+            "name": "Import Share (%)",
+            "nameLocation": "middle",
+            "nameGap": 35,
+            "nameTextStyle": {"fontSize": 10, "color": THEME["text_medium"]},
+            "min": 0,
+            "max": 25,
+            "axisLabel": {"fontSize": 10, "color": THEME["text_medium"]},
+            "splitLine": {"lineStyle": {"color": THEME["surface_16dp"], "opacity": 0.3}}
+        },
+        "series": series,
+        "animation": True,
+        "animationDuration": 800,
+        "animationEasing": "cubicOut"
+    }
+
+
+def create_winners_losers_echart(df: pd.DataFrame, era_key: str, top_n: int = 8) -> tuple:
+    """Create ECharts horizontal bar charts for winners and losers."""
+    config = ERAS[era_key]
+    imports = df[df["trade_type"] == "import"]
+    
+    # Cap era end year at actual data range
+    data_max_year = imports["year"].max()
+    era_end_year = min(config["end"], data_max_year)
+    
+    start_data = imports[imports["year"] == config["start"]][["country", "share_pct"]]
+    end_data = imports[imports["year"] == era_end_year][["country", "share_pct"]]
     
     comparison = start_data.merge(
         end_data, on="country", suffixes=("_start", "_end"), how="outer"
     ).fillna(0)
-    
     comparison["share_change"] = comparison["share_pct_end"] - comparison["share_pct_start"]
     
-    # Winners chart (using Material secondary/teal for gains)
+    # Winners
     winners = comparison.nlargest(top_n, "share_change")
     winners_opts = {
         "title": {"text": "Gained Share", "left": "center", "textStyle": {"fontSize": 14}},
-        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-        "grid": {"left": "25%", "right": "15%", "top": "15%", "bottom": "10%"},
-        "xAxis": {"type": "value", "name": "Share Change (pp)"},
+        "tooltip": {"trigger": "axis"},
+        "grid": {"right": "30%", "left": "15%", "top": "15%", "bottom": "10%"},
+        "xAxis": {"type": "value"},
         "yAxis": {
             "type": "category",
             "data": winners["country"].tolist()[::-1],
-            "axisLabel": {"fontSize": 11}
+            "axisLabel": {"fontSize": 11},
+            "position": "right"
         },
         "series": [{
             "type": "bar",
             "data": winners["share_change"].round(1).tolist()[::-1],
-            "itemStyle": {"color": THEME["secondary"]},  # Teal 200
-            "label": {
-                "show": True,
-                "position": "right",
-                "formatter": "+{c}pp",
-                "fontSize": 10
-            }
+            "itemStyle": {"color": THEME["secondary"]},
+            "label": {"show": True, "position": "left", "formatter": "+{c}pp", "fontSize": 10, "color": THEME["text_high"]},
         }],
-        "animation": True,
-        "animationDuration": 800
+        "animation": True
     }
     
-    # Losers chart (using Material error/red for losses)
+    # Losers
     losers = comparison.nsmallest(top_n, "share_change")
     losers_opts = {
         "title": {"text": "Lost Share", "left": "center", "textStyle": {"fontSize": 14}},
-        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-        "grid": {"left": "25%", "right": "15%", "top": "15%", "bottom": "10%"},
-        "xAxis": {"type": "value", "name": "Share Change (pp)"},
+        "tooltip": {"trigger": "axis"},
+        "grid": {"left": "30%", "right": "15%", "top": "15%", "bottom": "10%"},
+        "xAxis": {"type": "value"},
         "yAxis": {
             "type": "category",
             "data": losers["country"].tolist()[::-1],
@@ -428,88 +615,230 @@ def create_winners_losers_echart(df: pd.DataFrame, era_config: dict, top_n: int 
         "series": [{
             "type": "bar",
             "data": losers["share_change"].round(1).tolist()[::-1],
-            "itemStyle": {"color": THEME["error"]},  # Desaturated red
-            "label": {
-                "show": True,
-                "position": "left",
-                "formatter": "{c}pp",
-                "fontSize": 10
-            }
+            "itemStyle": {"color": THEME["error"]},
+            "label": {"show": True, "position": "right", "formatter": "{c}pp", "fontSize": 10, "color": THEME["text_high"]},
         }],
-        "animation": True,
-        "animationDuration": 800
+        "animation": True
     }
     
     return winners_opts, losers_opts
 
 
-def create_era_comparison_echart(df: pd.DataFrame) -> dict:
-    """Create ECharts grouped bar chart comparing China's share across eras."""
-    imports = df[df["trade_type"] == "import"]
-    
-    era_data = []
-    for era_name, config in ERAS.items():
-        start_share = get_china_share(imports, config["start"])
-        end_share = get_china_share(imports, config["end"])
-        era_data.append({
-            "era": era_name.split("(")[0].strip(),
-            "start": round(start_share, 1),
-            "end": round(end_share, 1),
-            "color": config["color"]
-        })
-    
-    df_eras = pd.DataFrame(era_data)
-    eras = df_eras["era"].tolist()
-    
-    return {
-        "title": {
-            "text": "China's Share: Start vs End of Each Era",
-            "left": "center",
-            "textStyle": {"fontSize": 14}
-        },
-        "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-        "legend": {
-            "data": ["Era Start", "Era End"],
-            "top": "bottom",
-            "textStyle": {"fontSize": 11}
-        },
-        "grid": {"left": "3%", "right": "4%", "bottom": "15%", "top": "15%", "containLabel": True},
-        "xAxis": {"type": "category", "data": eras},
-        "yAxis": {"type": "value", "name": "Share (%)", "max": 25},
-        "series": [
-            {
-                "name": "Era Start",
-                "type": "bar",
-                "data": df_eras["start"].tolist(),
-                "itemStyle": {"color": THEME["text_disabled"]},  # Subtle grey
-                "label": {"show": True, "position": "top", "formatter": "{c}%", "fontSize": 10}
-            },
-            {
-                "name": "Era End",
-                "type": "bar",
-                "data": [
-                    {"value": row["end"], "itemStyle": {"color": row["color"]}}
-                    for _, row in df_eras.iterrows()
-                ],
-                "label": {"show": True, "position": "top", "formatter": "{c}%", "fontSize": 10}
-            }
-        ],
-        "animation": True,
-        "animationDuration": 800
-    }
-
-
-def main():
-    # Compact Header
-    st.markdown("""
+def render_header(df: pd.DataFrame):
+    """Render the page header with dynamic year range."""
+    max_year = df["year"].max() if df is not None else 2024
+    st.markdown(f"""
     <div class="compact-header">
         <h1>The China Story Arc</h1>
-        <p>How America's Supply Chain Shifted · 1995-2024</p>
+        <p>How America's Supply Chain Shifted · 1995-{max_year}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_hero_chart(df: pd.DataFrame):
+    """Render the hero chart showing full trajectory."""
+    chart_opts = create_hero_chart(df)
+    st_echarts(options=chart_opts, height="400px")
+
+
+def render_era_section(df: pd.DataFrame, era_key: str):
+    """Render a single era section with narrative content."""
+    config = ERAS[era_key]
+    content = ERA_CONTENT[era_key]
+    metrics = get_era_metrics(df, era_key)
+    
+    # Era title
+    st.markdown(f"""
+    <div class="era-section" id="{era_key}">
+        <h2 class="era-title">{config['title']} ({config['years']})</h2>
+        <p class="era-hook">"{content['hook']}"</p>
+        <p class="era-context">{content['context']}</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Load data
-    df = load_data()
+    # Metrics - 6 cards in CSS Grid (2x3 mobile, 3x2 desktop with reordering)
+    partner = metrics['partner_name']
+    china_delta_sign = "+" if metrics['china_delta'] >= 0 else ""
+    partner_delta_sign = "+" if metrics['partner_delta'] >= 0 else ""
+    
+    # Cards in mobile order: 1-China Share, 2-China Change, 3-Partner Share, 
+    # 4-Partner Change, 5-#1 Country, 6-#2/#3/#4
+    # CSS reorders on desktop to: Row1(1,2,5) Row2(3,4,6)
+    st.markdown(f"""
+    <div class="era-metrics-grid">
+        <div class="metric-cell">
+            <div class="label">China Share</div>
+            <div class="value">{metrics['china_start']:.1f}% → {metrics['china_end']:.1f}%</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">China Change</div>
+            <div class="value">{china_delta_sign}{metrics['china_delta']:.1f}pp</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">{partner} Share</div>
+            <div class="value">{metrics['partner_start']:.1f}% → {metrics['partner_end']:.1f}%</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">{partner} Change</div>
+            <div class="value">{partner_delta_sign}{metrics['partner_delta']:.1f}pp</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">#1 Country</div>
+            <div class="value">{metrics['top_1']}</div>
+        </div>
+        <div class="metric-cell">
+            <div class="label">#2/#3/#4</div>
+            <div class="value">{metrics['top_234']}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Key event(s)
+    if era_key == "trade-war":
+        # Multiple events for trade war era
+        events_html = ""
+        for event in content["key_events"]:
+            events_html += f'<div class="key-event">📅 <strong>KEY EVENT:</strong> {event}</div>'
+        st.markdown(events_html, unsafe_allow_html=True)
+        
+        # Chapter 2 subsection (if present)
+        if "chapter_2" in content:
+            ch2 = content["chapter_2"]
+            
+            # Chapter 2 title with underline accent
+            st.markdown(f"""
+            <h4 style="color: {THEME['secondary']}; margin: 2rem 0 1rem 0; font-size: 1.1rem; 
+                padding-bottom: 0.5rem; border-bottom: 2px solid {THEME['secondary']};">
+                {ch2['title']}
+            </h4>
+            """, unsafe_allow_html=True)
+            
+            # Embed the focused 2018-2025 chart
+            chapter2_chart = create_chapter2_chart(df)
+            st_echarts(options=chapter2_chart, height="280px")
+            
+            # Chapter 2 narrative in styled box
+            st.markdown(f"""
+            <div style="margin: 0.5rem 0 2rem 0; padding: 1rem 1.25rem; background: {THEME['surface_4dp']}; 
+                border-radius: 8px; border-left: 4px solid {THEME['secondary']};">
+                <p style="color: {THEME['text_disabled']}; margin: 0 0 0.75rem 0; font-size: 0.85rem; font-style: italic;">
+                    * 2025 data through October (YTD)
+                </p>
+                <p style="color: {THEME['text_high']}; margin: 0; line-height: 1.6;">{ch2['text']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div class="key-event">
+            📅 <strong>KEY EVENT:</strong> {content['key_event']}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Takeaway
+    st.markdown(f"""
+    <p class="era-takeaway">{content['takeaway']}</p>
+    """, unsafe_allow_html=True)
+
+
+def render_trade_war_expanded(df: pd.DataFrame):
+    """Render expanded Trade War section with Winners/Losers and Beneficiaries."""
+    # Get the actual end year from data
+    imports = df[df["trade_type"] == "import"]
+    end_year = imports["year"].max()
+    
+    # Winners and Losers charts
+    st.subheader(f"Winners & Losers: 2018 → {end_year}")
+    
+    col1, col2 = st.columns(2)
+    winners_opts, losers_opts = create_winners_losers_echart(df, "trade-war")
+    
+    with col1:
+        st_echarts(options=winners_opts, height="350px")
+    with col2:
+        st_echarts(options=losers_opts, height="350px")
+    
+    # Beneficiaries cards
+    st.subheader("Trade War Beneficiaries")
+    
+    spotlight_countries = ["Vietnam", "Mexico", "India", "Taiwan", "Thailand"]
+    imports = df[df["trade_type"] == "import"]
+    latest_year = imports["year"].max()
+    
+    growth_data = []
+    for country in spotlight_countries:
+        share_2018 = imports[(imports["country"] == country) & (imports["year"] == 2018)]["share_pct"]
+        share_latest = imports[(imports["country"] == country) & (imports["year"] == latest_year)]["share_pct"]
+        
+        if len(share_2018) > 0 and len(share_latest) > 0:
+            start = share_2018.values[0]
+            end = share_latest.values[0]
+            growth = ((end - start) / start) * 100 if start > 0 else 0
+            growth_data.append({"country": country, "share": end, "growth": growth})
+    
+    # Display beneficiary cards - responsive grid
+    cols = st.columns(len(growth_data))
+    for i, data in enumerate(growth_data):
+        with cols[i]:
+            ui.metric_card(
+                title=data["country"],
+                content=f"{data['share']:.1f}%",
+                description=f"+{data['growth']:.0f}% since 2018",
+                key=f"beneficiary_{data['country']}"
+            )
+
+
+def render_data_explorer(df: pd.DataFrame):
+    """Render the data explorer expander."""
+    with st.expander("📊 Data Explorer"):
+        imports = df[df["trade_type"] == "import"]
+        
+        st.dataframe(
+            imports[["country", "year", "value_real", "share_pct", "yoy_growth_pct"]]
+            .sort_values(["year", "share_pct"], ascending=[True, False]),
+            use_container_width=True,
+            height=400
+        )
+        
+        csv = imports.to_csv(index=False)
+        st.download_button(
+            "Download Full Dataset (CSV)",
+            csv,
+            "trade_data_1995_2024.csv",
+            "text/csv"
+        )
+
+
+def render_footer(df: pd.DataFrame):
+    """Render the footer with data source info and YTD note if applicable."""
+    st.markdown("---")
+    
+    # Build footer text
+    footer_parts = [
+        "Data source: USITC DataWeb",
+        "Values adjusted for inflation (2020 base year)",
+        "Analysis covers US imports by country of origin"
+    ]
+    
+    # Check for YTD data
+    if 'is_ytd' in df.columns and df['is_ytd'].any():
+        ytd_years = df[df['is_ytd']]['year'].unique()
+        for year in ytd_years:
+            ytd_data = df[(df['year'] == year) & (df['is_ytd'])]
+            if 'last_month' in df.columns:
+                # Use max last_month across all countries for that year
+                max_month = int(ytd_data['last_month'].max())
+                month_names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                month_name = month_names[max_month] if max_month <= 12 else ''
+                footer_parts.append(f"{year} data through {month_name}")
+    
+    st.caption(" | ".join(footer_parts))
+
+
+def main():
+    """Main function - linear narrative flow."""
+    # Load data with cache busting based on file modification time
+    df = load_data(_cache_key=get_data_file_mtime())
     
     if df is None:
         st.error(
@@ -520,166 +849,44 @@ def main():
         )
         return
     
-    # Era selection with antd segmented control
-    era_keys = list(ERAS.keys())
+    # Header
+    render_header(df)
     
-    # Build segmented items and mapping
-    era_items = []
-    label_to_key = {}
-    for era_key in era_keys:
-        name_parts = era_key.split("(")
-        era_name = name_parts[0].strip()
-        era_items.append(sac.SegmentedItem(label=era_name))
-        label_to_key[era_name] = era_key
-    
-    # Get era from query params or default to Trade War Era
-    query_era = st.query_params.get("era", None)
-    if query_era and query_era in era_keys:
-        default_index = era_keys.index(query_era)
-    else:
-        default_index = 3  # Default to Trade War Era
-    
-    # Era selector (sticky on mobile via CSS)
-    selected_label = sac.segmented(
-        items=era_items,
-        index=default_index,
-        align="center",
-        size="xs",  # Extra small to fit on mobile
-        radius="md",
-        color="violet",  # Material purple
-        bg_color="transparent",
-        divider=False,
-        use_container_width=True,
-        key="era_selector"
-    )
-    
-    # Map label back to full era key and update URL
-    selected_era = label_to_key.get(selected_label, era_keys[default_index])
-    st.query_params["era"] = selected_era
-    era_config = ERAS[selected_era]
-    
-    # Era context - compact inline description
-    st.caption(f"**{era_config['title']}:** {era_config['description']}")
-    
-    # Get era metrics
-    metrics = get_era_metrics(df, era_config)
-    top_country = metrics['top_5'].iloc[0] if len(metrics['top_5']) > 0 else {"country": "N/A", "share_pct": 0}
-    
-    # Metric cards using shadcn
-    cols = st.columns(4)
-    with cols[0]:
-        ui.metric_card(
-            title=f"China {era_config['start']}",
-            content=f"{metrics['china_start']:.1f}%",
-            key="metric_start"
-        )
-    with cols[1]:
-        ui.metric_card(
-            title=f"China {era_config['end']}",
-            content=f"{metrics['china_end']:.1f}%",
-            key="metric_end"
-        )
-    with cols[2]:
-        delta_str = f"{metrics['china_delta']:+.1f}pp"
-        ui.metric_card(
-            title="Change",
-            content=delta_str,
-            description=f"{metrics['china_delta']:+.1f} pts",
-            key="metric_change"
-        )
-    with cols[3]:
-        ui.metric_card(
-            title=f"#1 in {era_config['end']}",
-            content=top_country['country'],
-            description=f"{top_country['share_pct']:.1f}%",
-            key="metric_top"
-        )
+    # Hero Chart - Full trajectory overview
+    render_hero_chart(df)
     
     st.markdown("---")
     
-    # Main China Arc Chart (with all focus countries) - ECharts version
-    st.subheader("The Full Arc")
-    echart_options = create_china_arc_echart(df, selected_era)
-    st_echarts(options=echart_options, height="450px")
+    # Era 1: Pre-WTO
+    render_era_section(df, "pre-wto")
     
-    # Era Comparison - full width
     st.markdown("---")
-    st.subheader("China Across Eras")
-    comparison_opts = create_era_comparison_echart(df)
-    st_echarts(options=comparison_opts, height="300px")
     
-    # Winners and Losers
+    # Era 2: WTO Boom
+    render_era_section(df, "wto-boom")
+    
     st.markdown("---")
-    st.subheader(f"Winners & Losers: {era_config['start']} → {era_config['end']}")
     
-    col1, col2 = st.columns(2)
-    winners_opts, losers_opts = create_winners_losers_echart(df, era_config)
+    # Era 3: Post-Crisis
+    render_era_section(df, "post-crisis")
     
-    with col1:
-        st_echarts(options=winners_opts, height="350px")
+    st.markdown("---")
     
-    with col2:
-        st_echarts(options=losers_opts, height="350px")
+    # Era 4: Trade War - EXPANDED with additional charts
+    render_era_section(df, "trade-war")
     
-    # Trade War Beneficiaries - Growth cards (only for Trade War era)
-    if selected_era == "Trade War Era (2018-Present)":
-        st.markdown("---")
-        st.subheader("Trade War Beneficiaries")
-        
-        spotlight_countries = ["Vietnam", "Mexico", "India", "Taiwan", "Thailand"]
-        imports = df[df["trade_type"] == "import"]
-        
-        # Build growth data
-        growth_data = []
-        for country in spotlight_countries:
-            share_2018 = imports[(imports["country"] == country) & (imports["year"] == 2018)]["share_pct"]
-            share_2024 = imports[(imports["country"] == country) & (imports["year"] == 2024)]["share_pct"]
-            
-            if len(share_2018) > 0 and len(share_2024) > 0:
-                start = share_2018.values[0]
-                end = share_2024.values[0]
-                growth = ((end - start) / start) * 100 if start > 0 else 0
-                growth_data.append({"country": country, "share": end, "growth": growth})
-        
-        # Display with shadcn metric cards
-        growth_cols = st.columns(len(growth_data))
-        for i, data in enumerate(growth_data):
-            with growth_cols[i]:
-                ui.metric_card(
-                    title=data["country"],
-                    content=f"{data['share']:.1f}%",
-                    description=f"+{data['growth']:.0f}% since 2018",
-                    key=f"growth_{data['country']}"
-                )
+    st.markdown("")  # Spacing
     
-    # Data Explorer (collapsed)
-    with st.expander("📊 Data Explorer"):
-        imports = df[df["trade_type"] == "import"]
-        era_data = imports[(imports["year"] >= era_config["start"]) & 
-                          (imports["year"] <= era_config["end"])]
-        
-        st.dataframe(
-            era_data[["country", "year", "value_real", "share_pct", "yoy_growth_pct"]]
-            .sort_values(["year", "share_pct"], ascending=[True, False]),
-            use_container_width=True,
-            height=400
-        )
-        
-        csv = era_data.to_csv(index=False)
-        st.download_button(
-            "Download Era Data (CSV)",
-            csv,
-            f"trade_data_{era_config['start']}_{era_config['end']}.csv",
-            "text/csv"
-        )
+    # Trade War expanded content
+    render_trade_war_expanded(df)
+    
+    st.markdown("---")
+    
+    # Data Explorer
+    render_data_explorer(df)
     
     # Footer
-    st.markdown("---")
-    st.caption(
-        "Data source: USITC DataWeb | "
-        "Values adjusted for inflation (2020 base year) | "
-        "Analysis covers US imports by country of origin"
-    )
+    render_footer(df)
 
 
 if __name__ == "__main__":
