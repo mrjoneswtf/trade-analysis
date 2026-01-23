@@ -194,6 +194,11 @@ iframe {{
     font-weight: 600;
     color: {THEME["text_high"]};
 }}
+.metric-cell .sublabel {{
+    font-size: 0.7rem;
+    color: {THEME["text_disabled"]};
+    margin-top: 0.25rem;
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -757,34 +762,32 @@ def render_trade_war_expanded(df: pd.DataFrame):
     with col2:
         st_echarts(options=losers_opts, height="350px")
     
-    # Beneficiaries cards
+    # Beneficiaries cards - Top 6 gainers by percentage points
     st.subheader("Trade War Beneficiaries")
     
-    spotlight_countries = ["Vietnam", "Mexico", "India", "Taiwan", "Thailand"]
     imports = df[df["trade_type"] == "import"]
     latest_year = imports["year"].max()
     
-    growth_data = []
-    for country in spotlight_countries:
-        share_2018 = imports[(imports["country"] == country) & (imports["year"] == 2018)]["share_pct"]
-        share_latest = imports[(imports["country"] == country) & (imports["year"] == latest_year)]["share_pct"]
-        
-        if len(share_2018) > 0 and len(share_latest) > 0:
-            start = share_2018.values[0]
-            end = share_latest.values[0]
-            growth = ((end - start) / start) * 100 if start > 0 else 0
-            growth_data.append({"country": country, "share": end, "growth": growth})
+    # Calculate share gains (pp) for all countries
+    share_2018 = imports[imports["year"] == 2018][["country", "share_pct"]].set_index("country")
+    share_latest = imports[imports["year"] == latest_year][["country", "share_pct"]].set_index("country")
+    gains = (share_latest - share_2018).dropna()
+    gains = gains[gains["share_pct"] > 0].sort_values("share_pct", ascending=False)
+    top_6_gainers = gains.head(6).index.tolist()
     
-    # Display beneficiary cards - responsive grid
-    cols = st.columns(len(growth_data))
-    for i, data in enumerate(growth_data):
-        with cols[i]:
-            ui.metric_card(
-                title=data["country"],
-                content=f"{data['share']:.1f}%",
-                description=f"+{data['growth']:.0f}% since 2018",
-                key=f"beneficiary_{data['country']}"
-            )
+    # Build growth data for top 6
+    growth_data = []
+    for country in top_6_gainers:
+        share_end = share_latest.loc[country, "share_pct"]
+        pp_gain = gains.loc[country, "share_pct"]
+        growth_data.append({"country": country, "share": share_end, "growth_pp": pp_gain})
+    
+    # Build HTML grid with 6 beneficiary cards (using era-metrics-grid for 3x2/2x3 layout)
+    cards_html = '<div class="era-metrics-grid">'
+    for data in growth_data:
+        cards_html += f'<div class="metric-cell"><div class="label">{data["country"]}</div><div class="value">{data["share"]:.1f}%</div><div class="sublabel">+{data["growth_pp"]:.1f}pp since 2018</div></div>'
+    cards_html += '</div>'
+    st.markdown(cards_html, unsafe_allow_html=True)
 
 
 def render_data_explorer(df: pd.DataFrame):
